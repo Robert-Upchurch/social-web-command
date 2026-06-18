@@ -1833,6 +1833,12 @@ function openIntegrationModal(key){
     <div class="form-row"><label>Account / Workspace</label><input id="intg_account" placeholder="e.g. CTI Group Worldwide" value="${escapeHtml(cfg.account||'')}"></div>
     <div class="form-row"><label>API Key (optional, paste later)</label><input id="intg_token" type="password" placeholder="${cfg.tokenMask ? cfg.tokenMask : def.tokenHint}" autocomplete="off"></div>
     ${extraFieldsHtml}
+    ${key === 'frameio' ? `
+      <div style="margin:8px 0 12px; padding:10px; background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.3); border-radius:6px">
+        <div style="font-size:12px; margin-bottom:8px">Don’t know your Account/Workspace IDs? Paste the API key above, then click below:</div>
+        <button class="btn primary" type="button" onclick="discoverFrameioIds()">🔍 Discover IDs from API key</button>
+        <div id="frameioDiscoverOut" style="margin-top:8px; font-size:12px; color:var(--muted)"></div>
+      </div>` : ''}
     ${brandSel}
     <div class="form-row"><label>Notes (optional)</label><input id="intg_notes" placeholder="e.g. shared with marketing team" value="${escapeHtml(cfg.notes||'')}"></div>
     <div style="font-size:11px; color:var(--muted); margin-top:6px">Keys are stored only in your browser local storage. For production sync, route via Perplexity secure credential vault.</div>
@@ -2133,6 +2139,37 @@ function saveProxyConfig(){
   renderPage();
   alert('Proxy config saved');
 }
+async function discoverFrameioIds(){
+  const out = document.getElementById('frameioDiscoverOut');
+  const tokenEl = document.getElementById('intg_token');
+  const token = (tokenEl && tokenEl.value || '').trim();
+  if(!token){ out.innerHTML = '<span style="color:#ef4444">Paste your Frame.io API key in the field above first.</span>'; return; }
+  if(!_proxyUrl()){ out.innerHTML = '<span style="color:#ef4444">Sync Proxy is not configured. Go to Settings → Sync Proxy.</span>'; return; }
+  out.innerHTML = '<span>● Looking up your Frame.io accounts and workspaces…</span>';
+  try{
+    const data = await _proxyPost('/discover/frameio', { token: token });
+    const accounts = data.accounts || [];
+    if(accounts.length === 0){ out.innerHTML = '<span style="color:#ef4444">No accounts found. Your API key may be invalid or have no account access.</span>'; return; }
+    let html = '<div style="color:#10b981; margin-bottom:6px">Found ' + accounts.length + ' account(s):</div>';
+    accounts.forEach(function(a){
+      html += '<div style="margin-bottom:8px; padding:6px; background:rgba(255,255,255,.04); border-radius:4px">';
+      html += '<div><strong>' + escapeHtml(a.accountName||'(unnamed)') + '</strong></div>';
+      html += '<div>Account ID: <code style="background:#0006; padding:1px 4px; border-radius:3px">' + escapeHtml(a.accountId) + '</code> <button class="btn" style="padding:2px 6px; font-size:10px" onclick="_fillFrameioId(\'accountId\', \'' + a.accountId + '\')">Use</button></div>';
+      (a.workspaces || []).forEach(function(w){
+        html += '<div style="margin-left:12px">Workspace "' + escapeHtml(w.name||'') + '": <code style="background:#0006; padding:1px 4px; border-radius:3px">' + escapeHtml(w.id) + '</code> <button class="btn" style="padding:2px 6px; font-size:10px" onclick="_fillFrameioId(\'workspaceId\', \'' + w.id + '\')">Use</button></div>';
+      });
+      html += '</div>';
+    });
+    out.innerHTML = html;
+  } catch(e){
+    out.innerHTML = '<span style="color:#ef4444">Lookup failed: ' + escapeHtml(e.message) + '</span>';
+  }
+}
+function _fillFrameioId(field, value){
+  const el = document.getElementById('intg_x_' + field);
+  if(el){ el.value = value; el.style.borderColor = '#10b981'; setTimeout(function(){ el.style.borderColor=''; }, 1500); }
+}
+
 async function testProxy(){
   const el = document.getElementById('proxyStatus');
   if(!_proxyUrl()){ el.innerHTML = '<span style="color:#ef4444">● No URL set</span>'; return; }

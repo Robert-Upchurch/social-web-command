@@ -101,6 +101,37 @@ async function syncFrameio(payload) {
   }));
 }
 
+// ===== Frame.io discovery (list accounts + workspaces) =====
+async function discoverFrameio(payload) {
+  const token = payload.token;
+  if (!token) throw new Error("Missing token");
+  const headers = { "Authorization": "Bearer " + token, "Accept": "application/json" };
+
+  // 1) accounts
+  const accRes = await fetch("https://api.frame.io/v4/accounts", { headers });
+  const accText = await accRes.text();
+  if (!accRes.ok) throw new Error(`Frame.io accounts ${accRes.status}: ${accText.slice(0,300)}`);
+  let accData; try { accData = JSON.parse(accText); } catch (e) { throw new Error("accounts: non-JSON"); }
+  const accounts = accData.data || accData.accounts || [];
+
+  // 2) workspaces per account
+  const out = [];
+  for (const a of accounts) {
+    const aid = a.id;
+    let workspaces = [];
+    try {
+      const wRes = await fetch(`https://api.frame.io/v4/accounts/${encodeURIComponent(aid)}/workspaces`, { headers });
+      const wText = await wRes.text();
+      if (wRes.ok) {
+        const wData = JSON.parse(wText);
+        workspaces = (wData.data || wData.workspaces || []).map(w => ({ id: w.id, name: w.name || "" }));
+      }
+    } catch (e) { /* ignore per-account failure */ }
+    out.push({ accountId: aid, accountName: a.name || a.display_name || "", workspaces });
+  }
+  return out;
+}
+
 // ===== HeyGen =====
 async function syncHeygen(payload) {
   const token = payload.token;
@@ -148,8 +179,8 @@ export default {
       return jsonResponse({
         ok: true,
         service: "social-web-command-sync",
-        version: "1.0.0",
-        endpoints: ["/sync/frameio", "/sync/heygen"],
+        version: "1.1.0",
+        endpoints: ["/sync/frameio", "/sync/heygen", "/discover/frameio"],
         time: new Date().toISOString(),
       }, 200, request, env);
     }
@@ -174,6 +205,10 @@ export default {
       if (url.pathname === "/sync/heygen") {
         const items = await syncHeygen(payload);
         return jsonResponse({ ok: true, provider: "heygen", items, total: items.length }, 200, request, env);
+      }
+      if (url.pathname === "/discover/frameio") {
+        const accounts = await discoverFrameio(payload);
+        return jsonResponse({ ok: true, provider: "frameio", accounts }, 200, request, env);
       }
       return errorResponse("Not found", 404, request, env);
     } catch (e) {
