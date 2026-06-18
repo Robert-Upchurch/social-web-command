@@ -1,5 +1,5 @@
 /**
- * Social & Web Command — Sync Proxy Worker (v1.3.0)
+ * Social & Web Command — Sync Proxy Worker (v1.3.1)
  *
  * Cloudflare Worker that proxies API calls to providers whose browser-side
  * requests are blocked by CORS (Frame.io v3, HeyGen). All credentials are
@@ -179,18 +179,23 @@ async function syncHeygen(payload) {
   const token = payload.token;
   if (!token) throw new Error("Missing token");
   const limit = Math.min(parseInt(payload.limit, 10) || 50, 100);
-  const url = `https://api.heygen.com/v1/video.list?limit=${limit}`;
+  // v2/videos returns thumbnail_url, gif_url, video_page_url, duration. v1 does not.
+  const url = `https://api.heygen.com/v2/videos?limit=${limit}`;
   const res = await fetch(url, {
     headers: { "X-Api-Key": token, "Accept": "application/json" },
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`HeyGen ${res.status}: ${text.slice(0, 300)}`);
   let data; try { data = JSON.parse(text); } catch (e) { throw new Error("HeyGen returned non-JSON"); }
-  const list = (data.data && data.data.videos) || data.videos || [];
+  // v2 shape: { data: [ ... ] }. Older v1 shape was { data: { videos: [...] } }. Handle both.
+  let list = [];
+  if (Array.isArray(data.data)) list = data.data;
+  else if (data.data && Array.isArray(data.data.videos)) list = data.data.videos;
+  else if (Array.isArray(data.videos)) list = data.videos;
   return list.map(v => ({
-    externalId: v.video_id || v.id,
-    title: v.video_title || v.title || "HeyGen Video",
-    url: v.video_url || ("https://app.heygen.com/videos/" + (v.video_id || v.id)),
+    externalId: v.id || v.video_id,
+    title: v.title || v.video_title || "HeyGen Video",
+    url: v.video_page_url || v.video_url || ("https://app.heygen.com/videos/" + (v.id || v.video_id)),
     duration: v.duration ? fmtDuration(v.duration) : "",
     uploaded: v.created_at ? new Date(v.created_at * 1000).toISOString().slice(0, 10) : "",
     thumb: v.thumbnail_url || v.gif_url || "\uD83D\uDC64",
@@ -216,7 +221,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "social-web-command-sync",
-        version: "1.3.0",
+        version: "1.3.1",
         endpoints: ["/sync/frameio", "/sync/heygen", "/discover/frameio"],
         notes: "Frame.io uses v3 API (token prefix fio-u-...). Teams are exposed to the hub as 'workspaces'.",
         time: new Date().toISOString(),
