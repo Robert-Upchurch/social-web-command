@@ -1,0 +1,16 @@
+name = "swc-sync-proxy"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Allowed browser origins (comma-separated supported in code, but Worker uses first match).
+# The hub is hosted at GitHub Pages by default; update if you move.
+[vars]
+ALLOWED_ORIGIN = "https://robert-upchurch.github.io"
+
+# Shared secret between the hub and the Worker.
+# DO NOT put the real value in this file. Set it once via:
+#   wrangler secret put HUB_SHARED_SECRET
+# Then paste the secret value when prompted.
+#
+# The hub sends it in the X-Hub-Secret header. If unset, the Worker is open
+# (only acceptable for local dev).

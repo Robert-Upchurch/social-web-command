@@ -1,0 +1,14 @@
+{
+  "name": "swc-sync-proxy",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker proxying Frame.io and HeyGen API calls for the Social & Web Command hub.",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "secret": "wrangler secret put HUB_SHARED_SECRET"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0"
+  }
+}

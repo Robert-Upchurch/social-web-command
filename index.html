@@ -519,7 +519,7 @@ tr:last-child td{border-bottom:none}
 
 <!-- ====== STATUS STRIP ====== -->
 <div class="strip">
-  <span><span class="dot g"></span>Build v0.9 · Social & Web Command</span>
+  <span id="buildTag"><span class="dot g"></span>Build v0.9 · Demo Mode</span>
   <span>🔄 Auto-saved <span id="lastSaved">just now</span></span>
   <span>🔒 RBAC: Phase 1 (UI only)</span>
   <span>📦 <span id="dataCounter">0</span> records local</span>
@@ -582,6 +582,7 @@ const ROLES = ['Super Admin','Executive Reviewer','Brand Manager','Content Produ
 let state = {
   currentBrand: 'all',
   currentRoute: 'overview',
+  productionMode: false,
   content: [],
   scripts: [],
   videos: [],
@@ -593,6 +594,8 @@ let state = {
   spend: [],
   sites: [],
   campaigns: [],
+  integrations: {},
+  proxy: { url: '', secret: '' },
 };
 
 // ---------- PERSISTENCE ----------
@@ -1601,12 +1604,42 @@ function pageSettings(){
     </div>
 
     <div class="tile" style="margin-top:12px">
+      <div class="section-title">Sync Proxy (Cloudflare Worker)</div>
+      <div style="font-size:12px; color:var(--muted); margin-bottom:8px">
+        Bypasses browser CORS limits for Frame.io and HeyGen. Paste your deployed Worker URL below. Leave blank to attempt direct browser calls.
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center">
+        <input id="proxyUrlInput" class="input" placeholder="https://swc-sync-proxy.YOUR.workers.dev" value="${(state.proxy && state.proxy.url) || ''}" />
+        <input id="proxySecretInput" class="input" placeholder="Shared secret (optional)" value="${(state.proxy && state.proxy.secret) || ''}" />
+        <button class="btn primary" onclick="saveProxyConfig()">Save</button>
+      </div>
+      <div id="proxyStatus" style="font-size:12px; margin-top:8px; color:var(--muted)">
+        ${(state.proxy && state.proxy.url) ? '<span style="color:#10b981">● Proxy configured — server sync ready</span>' : '● No proxy set — Frame.io & HeyGen may be blocked by browser CORS'}
+      </div>
+      <div style="margin-top:8px"><button class="btn" onclick="testProxy()">Test Connection</button></div>
+    </div>
+
+    <div class="tile" style="margin-top:12px">
+      <div class="section-title">Mode</div>
+      <div style="display:flex; align-items:center; gap:12px; padding:8px 0">
+        <span style="font-size:14px"><strong>${state.productionMode ? 'Production Mode' : 'Demo Mode'}</strong>
+          <span style="color:var(--muted); font-size:12px; display:block; margin-top:2px">${state.productionMode
+            ? 'Demo data is hidden. Hub shows only your real synced data.'
+            : 'Hub is showing ~85 seeded demo records so you can explore safely. Flip to Production to clear them.'}</span>
+        </span>
+        <button class="btn ${state.productionMode ? '' : 'primary'}" onclick="toggleProductionMode()">
+          ${state.productionMode ? 'Switch to Demo Mode' : 'Switch to Production Mode'}
+        </button>
+      </div>
+    </div>
+
+    <div class="tile" style="margin-top:12px">
       <div class="section-title">Data Management</div>
-      <div style="display:flex; gap:8px">
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
         <button class="btn primary" onclick="exportData()">📤 Export All Data (JSON)</button>
         <button class="btn" onclick="document.getElementById('importInput').click()">📥 Import JSON</button>
-        <button class="btn" onclick="if(confirm('Reset to demo data? Current data will be lost.')){localStorage.removeItem('swc-state'); location.reload();}">🔄 Reset to Demo</button>
-        <button class="btn" onclick="if(confirm('Wipe ALL data?')){localStorage.removeItem('swc-state'); state={...state, content:[],videos:[],scripts:[],stills:[],landingPages:[],prospects:[],presentations:[],engagement:[],spend:[],sites:[],campaigns:[]}; saveState(); location.reload();}" style="color:var(--accent)">🗑️ Wipe Data</button>
+        ${state.productionMode ? '' : `<button class="btn" onclick="if(confirm('Reset to demo data? Current data will be lost.')){localStorage.removeItem('swc-state'); location.reload();}">🔄 Reset to Demo</button>`}
+        <button class="btn" onclick="if(confirm('Wipe ALL data?')){const pm=state.productionMode; const intg=state.integrations; const px=state.proxy; localStorage.removeItem('swc-state'); state={...state, content:[],videos:[],scripts:[],stills:[],landingPages:[],prospects:[],presentations:[],engagement:[],spend:[],sites:[],campaigns:[], productionMode:pm, integrations:intg, proxy:px}; saveState(); location.reload();}" style="color:var(--accent)">🗑️ Wipe Data</button>
       </div>
     </div>
   `;
@@ -1777,7 +1810,11 @@ function openIntegrationModal(key){
   if(def.syncable === false){
     statusBlock = '<div style="background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Sync not available yet.</strong> ' + escapeHtml(def.manualNote||'') + '</div>';
   } else if(def.browserCors === false){
-    statusBlock = '<div style="background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Browser sync may be blocked by CORS.</strong> If “Sync now” fails after saving the key, the credentials are still stored — a scheduled server-side sync can run this connection.</div>';
+    if(state.proxy && state.proxy.url){
+      statusBlock = '<div style="background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Server sync ready (via proxy).</strong> Calls route through your Cloudflare Worker to bypass browser CORS limits. Click “Sync now” after saving the key.</div>';
+    } else {
+      statusBlock = '<div style="background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Browser sync may be blocked by CORS.</strong> Configure a Sync Proxy in Settings to bypass this. Credentials are still stored if you save them now.</div>';
+    }
   } else {
     statusBlock = '<div style="background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Browser sync ready.</strong> After saving the API key, click “Sync now” to pull assets directly from ' + escapeHtml(def.label) + '.</div>';
   }
@@ -1924,6 +1961,34 @@ function closeModal(){
 // ============================================================
 // IMPORT / EXPORT
 // ============================================================
+function toggleProductionMode(){
+  if(!state.productionMode){
+    if(!confirm('Switch to Production Mode?\n\nThis will:\n\u2022 Clear all ~85 demo records (content, videos, scripts, stills, landing pages, prospects, presentations, engagement, spend, sites, campaigns)\n\u2022 Hide the "Reset to Demo" button\n\u2022 Keep your integrations and any real synced data\n\nYou can switch back to Demo Mode anytime to reload the seed data.')) return;
+    const intg = state.integrations || {};
+    state.content = []; state.videos = []; state.scripts = []; state.stills = [];
+    state.landingPages = []; state.prospects = []; state.presentations = [];
+    state.engagement = []; state.spend = []; state.sites = []; state.campaigns = [];
+    state.productionMode = true;
+    state.integrations = intg;
+  } else {
+    if(!confirm('Switch back to Demo Mode?\n\nThis will reload the seed dataset over your current data. Export first if you want to keep it.')) return;
+    localStorage.removeItem('swc-state');
+    location.reload();
+    return;
+  }
+  saveState();
+  updateBuildTag();
+  renderPage();
+}
+function updateBuildTag(){
+  const el = document.getElementById('buildTag');
+  if(!el) return;
+  if(state.productionMode){
+    el.innerHTML = '<span class="dot g"></span>Build v1.0 · Production Mode';
+  } else {
+    el.innerHTML = '<span class="dot g"></span>Build v0.9 · Demo Mode';
+  }
+}
 function exportData(){
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2048,7 +2113,48 @@ async function syncElevenLabs(cfg){
   });
   return { added: mergeSyncedVideos(items, 'ElevenLabs'), total: items.length };
 }
+// ---- Sync Proxy helpers ----
+function _proxyUrl(){ return ((state.proxy && state.proxy.url) || '').replace(/\/$/,''); }
+async function _proxyPost(path, body){
+  const url = _proxyUrl();
+  if(!url) throw new Error('No proxy configured. Open Settings → Sync Proxy and paste your Worker URL.');
+  const headers = { 'Content-Type': 'application/json' };
+  if(state.proxy && state.proxy.secret) headers['X-Hub-Secret'] = state.proxy.secret;
+  const res = await fetch(url + path, { method:'POST', headers, body: JSON.stringify(body) });
+  const data = await res.json().catch(function(){ return { ok:false, error:'Bad JSON from proxy' }; });
+  if(!res.ok || !data.ok) throw new Error((data && data.error) || ('Proxy ' + res.status));
+  return data;
+}
+function saveProxyConfig(){
+  const u = (document.getElementById('proxyUrlInput').value || '').trim();
+  const s = (document.getElementById('proxySecretInput').value || '').trim();
+  state.proxy = { url: u, secret: s };
+  saveState();
+  renderPage();
+  alert('Proxy config saved');
+}
+async function testProxy(){
+  const el = document.getElementById('proxyStatus');
+  if(!_proxyUrl()){ el.innerHTML = '<span style="color:#ef4444">● No URL set</span>'; return; }
+  el.innerHTML = '<span style="color:var(--muted)">● Testing…</span>';
+  try{
+    const res = await fetch(_proxyUrl() + '/');
+    const data = await res.json();
+    if(data && data.ok){ el.innerHTML = '<span style="color:#10b981">● Proxy reachable — ' + (data.service || 'ok') + ' v' + (data.version || '?') + '</span>'; }
+    else el.innerHTML = '<span style="color:#ef4444">● Proxy responded but not healthy</span>';
+  } catch(e){
+    el.innerHTML = '<span style="color:#ef4444">● Unreachable: ' + e.message + '</span>';
+  }
+}
+
 async function syncHeyGen(cfg){
+  // Server-side path (preferred — avoids CORS)
+  if(_proxyUrl()){
+    const data = await _proxyPost('/sync/heygen', { token: cfg.token, limit: 50 });
+    const items = (data.items || []).map(function(v){ return Object.assign({}, v, { brand: cfg.defaultBrand || '' }); });
+    return { added: mergeSyncedVideos(items, 'HeyGen'), total: items.length };
+  }
+  // Fallback: direct browser call (usually blocked by CORS)
   const res = await fetch('https://api.heygen.com/v1/video.list?limit=50', {
     headers: { 'X-Api-Key': cfg.token, 'Accept': 'application/json' }
   });
@@ -2072,6 +2178,12 @@ async function syncFrameio(cfg){
   const accountId   = cfg.extras && cfg.extras.accountId;
   const workspaceId = cfg.extras && cfg.extras.workspaceId;
   if(!accountId || !workspaceId) throw new Error('Frame.io requires Account ID and Workspace ID. Open Connect Frame.io and fill those fields.');
+  // Server-side path (preferred — avoids CORS)
+  if(_proxyUrl()){
+    const data = await _proxyPost('/sync/frameio', { token: cfg.token, accountId: accountId, workspaceId: workspaceId });
+    const items = (data.items || []).map(function(p){ return Object.assign({}, p, { brand: cfg.defaultBrand || '' }); });
+    return { added: mergeSyncedVideos(items, 'Frame.io'), total: items.length };
+  }
   const url = 'https://api.frame.io/v4/accounts/' + encodeURIComponent(accountId) + '/workspaces/' + encodeURIComponent(workspaceId) + '/projects';
   const res = await fetch(url, {
     headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/json' }
