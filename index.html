@@ -618,7 +618,7 @@ function loadState(){
   // so the next Sync now rebuilds them with proper thumbnail_url. Demo records (no externalId) are kept.
   if(state.videos && Array.isArray(state.videos)){
     const before = state.videos.length;
-    const SYNCED_HOSTS = ['HeyGen','Frame.io','Synthesia','ElevenLabs'];
+    const SYNCED_HOSTS = ['HeyGen','Frame.io','Synthesia','ElevenLabs','YouTube'];
     state.videos = state.videos.filter(function(v){
       if(!v.externalId) return true;
       if(!SYNCED_HOSTS.includes(v.host)) return true;
@@ -1187,7 +1187,7 @@ function pageLibrary(){
       </div>
       <div class="page-actions">
         <button class="btn">📥 Import Adobe</button>
-        <button class="btn">📥 Import YouTube</button>
+        <button class="btn" onclick="openYouTubeImport()">📥 Import YouTube</button>
         <button class="btn primary">+ Add Asset</button>
       </div>
     </div>
@@ -2107,6 +2107,94 @@ function mergeSyncedVideos(items, hostLabel){
   });
   return added + updated;
 }
+// ===== YouTube Import (reads bundled youtube-videos.json snapshot) =====
+async function openYouTubeImport(){
+  let data;
+  try {
+    const res = await fetch('youtube-videos.json?ts=' + Date.now(), { cache: 'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+  } catch(e){
+    alert('Could not load YouTube snapshot.\n\n' + (e.message||e) + '\n\nMake sure youtube-videos.json is deployed alongside the hub.');
+    return;
+  }
+  const channels = (data && data.channels) || [];
+  if(!channels.length){ alert('No YouTube channels in the snapshot yet.'); return; }
+
+  // Phase 1: single channel. Phase 2: multi-channel picker (this loop already supports it).
+  const channel = channels[0];
+  const videos = channel.videos || [];
+  const updatedAt = (data.updatedAt||'').slice(0,10);
+
+  const existingIds = new Set((state.videos||[]).filter(v=>v.host==='YouTube'&&v.externalId).map(v=>v.externalId));
+  const newCount = videos.filter(v=>!existingIds.has(v.videoId)).length;
+
+  const rows = videos.map(function(v){
+    const already = existingIds.has(v.videoId);
+    const safeTitle = escapeHtml(v.title||'Untitled');
+    const date = (v.publishedAt||'').slice(0,10);
+    return `<label style="display:flex;gap:10px;padding:8px;border-radius:6px;cursor:pointer;align-items:center;background:${already?'rgba(34,197,94,0.08)':'transparent'}">
+      <input type="checkbox" class="yt-pick" value="${v.videoId}" ${already?'':'checked'} ${already?'disabled':''}>
+      <img src="${v.thumbnail}" alt="" style="width:96px;height:54px;object-fit:cover;border-radius:4px;flex-shrink:0" loading="lazy">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${safeTitle}</div>
+        <div style="font-size:11px;opacity:0.7">${date} ${already?'· already imported':''}</div>
+      </div>
+    </label>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'ytImportModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:var(--bg,#0a1628);color:var(--fg,#e2e8f0);border:1px solid rgba(255,255,255,0.1);border-radius:10px;max-width:700px;width:100%;max-height:90vh;display:flex;flex-direction:column">
+      <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:700;font-size:16px">📥 Import from YouTube</div>
+          <div style="font-size:12px;opacity:0.7;margin-top:2px">${escapeHtml(channel.channelTitle)} · ${videos.length} videos · ${newCount} new · snapshot ${updatedAt}</div>
+        </div>
+        <button class="btn" onclick="document.getElementById('ytImportModal').remove()">✕</button>
+      </div>
+      <div style="padding:8px 16px;display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,0.05)">
+        <button class="btn" onclick="document.querySelectorAll('#ytImportModal .yt-pick:not(:disabled)').forEach(c=>c.checked=true)">Select all new</button>
+        <button class="btn" onclick="document.querySelectorAll('#ytImportModal .yt-pick:not(:disabled)').forEach(c=>c.checked=false)">Clear</button>
+      </div>
+      <div style="padding:8px 16px;overflow-y:auto;flex:1">${rows}</div>
+      <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn" onclick="document.getElementById('ytImportModal').remove()">Cancel</button>
+        <button class="btn primary" onclick="confirmYouTubeImport('${channel.channelId}')">Import selected</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function confirmYouTubeImport(channelId){
+  const picks = Array.from(document.querySelectorAll('#ytImportModal .yt-pick:checked:not(:disabled)')).map(c=>c.value);
+  const modal = document.getElementById('ytImportModal');
+  if(!picks.length){ alert('No videos selected.'); return; }
+  // Re-read snapshot from in-memory (refetch is fine and cheap)
+  fetch('youtube-videos.json?ts=' + Date.now(), { cache: 'no-store' }).then(r=>r.json()).then(function(data){
+    const channel = (data.channels||[]).find(c=>c.channelId===channelId) || data.channels[0];
+    const set = new Set(picks);
+    const items = (channel.videos||[]).filter(v=>set.has(v.videoId)).map(function(v){
+      return {
+        externalId: v.videoId,
+        title: v.title,
+        brand: 'CTI-USA',
+        url: v.url,
+        thumb: v.thumbnail,
+        uploaded: (v.publishedAt||'').slice(0,10),
+        duration: '',
+      };
+    });
+    const n = mergeSyncedVideos(items, 'YouTube');
+    saveState();
+    if(modal) modal.remove();
+    renderPage();
+    alert('Imported/refreshed ' + n + ' YouTube video(s).');
+  }).catch(function(e){ alert('Import failed: ' + (e.message||e)); });
+}
+
 function _fmtDuration(sec){
   sec = Math.round(Number(sec)||0);
   const m = Math.floor(sec/60), s = sec%60;
