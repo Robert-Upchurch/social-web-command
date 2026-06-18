@@ -1212,31 +1212,100 @@ function libTab(e, which){
   else html = renderLibStills();
   document.getElementById('libContent').innerHTML = html;
 }
+// videoUi: { q: '', host: 'all', collapsed: { HostName: true } }
+function _videoUi(){
+  state.videoUi = state.videoUi || { q:'', host:'all', collapsed:{} };
+  return state.videoUi;
+}
+function libVideosSearch(val){ _videoUi().q = (val||'').toLowerCase(); document.getElementById('libContent').innerHTML = renderLibVideos(); }
+function libVideosHost(val){ _videoUi().host = val||'all'; document.getElementById('libContent').innerHTML = renderLibVideos(); }
+function libVideosToggle(host){
+  const ui = _videoUi();
+  ui.collapsed[host] = !ui.collapsed[host];
+  saveState();
+  document.getElementById('libContent').innerHTML = renderLibVideos();
+}
+function libVideosCollapseAll(open){
+  const ui = _videoUi();
+  const hosts = [...new Set((state.videos||[]).map(v=>v.host||'Other'))];
+  hosts.forEach(h => { ui.collapsed[h] = !open; });
+  saveState();
+  document.getElementById('libContent').innerHTML = renderLibVideos();
+}
+function _videoCardHtml(v){
+  const b = brand(v.brand);
+  const isUrl = typeof v.thumb === 'string' && /^https?:\/\//.test(v.thumb);
+  const thumbHtml = isUrl
+    ? `<img src="${escapeHtml(v.thumb)}" alt="${escapeHtml(v.title)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🎬',style:'font-size:32px'}))">`
+    : (v.thumb || '🎬');
+  const clickable = v.url ? `onclick="window.open('${encodeURI(v.url)}','_blank','noopener')" title="Open in ${escapeHtml(v.host||'')}" style="cursor:pointer"` : '';
+  return `<div class="video-card" ${clickable}>
+    <div class="video-thumb">${thumbHtml}<span class="video-host-badge">${(v.host||'').toUpperCase()}</span></div>
+    <div class="video-body">
+      <div class="video-title">${escapeHtml(v.title)}</div>
+      <div class="video-meta"><span>${b.emoji} ${b.name}</span><span>${escapeHtml(v.duration||'')}</span></div>
+    </div>
+  </div>`;
+}
 function renderLibVideos(){
-  const items = filterByBrand(state.videos);
-  if(!items.length) return `<div class="empty"><div class="empty-icon">🎬</div>No videos yet. Click + Add Asset to upload.</div>`;
-  return `<div class="grid-4">${items.map(v=>{
-    const b = brand(v.brand);
-    const isUrl = typeof v.thumb === 'string' && /^https?:\/\//.test(v.thumb);
-    const thumbHtml = isUrl
-      ? `<img src="${escapeHtml(v.thumb)}" alt="${escapeHtml(v.title)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'\uD83C\uDFAC',style:'font-size:32px'}))">`
-      : (v.thumb || '\uD83C\uDFAC');
-    const clickable = v.url ? `onclick="window.open('${encodeURI(v.url)}','_blank','noopener')" title="Open in ${escapeHtml(v.host||'')}" style="cursor:pointer"` : '';
-    return `
-    <div class="video-card" ${clickable}>
-      <div class="video-thumb">
-        ${thumbHtml}
-        <span class="video-host-badge">${v.host.toUpperCase()}</span>
-      </div>
-      <div class="video-body">
-        <div class="video-title">${escapeHtml(v.title)}</div>
-        <div class="video-meta">
-          <span>${b.emoji} ${b.name}</span>
-          <span>${v.duration}</span>
-        </div>
-      </div>
+  const ui = _videoUi();
+  const all = filterByBrand(state.videos || []);
+
+  // Build host list from all (pre-filter) data
+  const hostCounts = {};
+  all.forEach(v => { const h = v.host || 'Other'; hostCounts[h] = (hostCounts[h]||0) + 1; });
+  const hosts = Object.keys(hostCounts).sort();
+
+  // Apply filters (title search + host filter)
+  const q = (ui.q||'').trim();
+  const filtered = all.filter(v => {
+    if(ui.host !== 'all' && (v.host||'Other') !== ui.host) return false;
+    if(q && !(v.title||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // Controls bar
+  const hostOptions = ['<option value="all">All sources (' + all.length + ')</option>']
+    .concat(hosts.map(h => `<option value="${escapeHtml(h)}" ${ui.host===h?'selected':''}>${escapeHtml(h)} (${hostCounts[h]})</option>`))
+    .join('');
+  const controls = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center">
+      <input type="text" placeholder="🔍 Search videos by title..." value="${escapeHtml(ui.q||'')}"
+        oninput="libVideosSearch(this.value)"
+        style="flex:1;min-width:220px;padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:13px">
+      <select onchange="libVideosHost(this.value)"
+        style="padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:13px">
+        ${hostOptions}
+      </select>
+      <button class="btn sm" onclick="libVideosCollapseAll(true)">Expand all</button>
+      <button class="btn sm" onclick="libVideosCollapseAll(false)">Collapse all</button>
     </div>`;
-  }).join('')}</div>`;
+
+  if(!all.length) return controls + `<div class="empty"><div class="empty-icon">🎬</div>No videos yet. Click + Add Asset to upload.</div>`;
+  if(!filtered.length) return controls + `<div class="empty"><div class="empty-icon">🔍</div>No videos match your filters.</div>`;
+
+  // Group filtered videos by host
+  const groups = {};
+  filtered.forEach(v => { const h = v.host || 'Other'; (groups[h] = groups[h] || []).push(v); });
+  const groupHosts = Object.keys(groups).sort();
+
+  const sections = groupHosts.map(h => {
+    const list = groups[h];
+    const collapsed = !!ui.collapsed[h];
+    const arrow = collapsed ? '▶' : '▼';
+    const body = collapsed ? '' : `<div class="grid-4" style="margin-top:10px">${list.map(_videoCardHtml).join('')}</div>`;
+    return `<div style="margin-bottom:18px">
+      <div onclick="libVideosToggle('${escapeHtml(h)}')"
+        style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.06);border-radius:6px;cursor:pointer;user-select:none;font-weight:600">
+        <span style="font-size:11px;width:14px">${arrow}</span>
+        <span>${escapeHtml(h)}</span>
+        <span style="opacity:0.6;font-weight:400;font-size:12px">(${list.length}${list.length!==hostCounts[h]?' of '+hostCounts[h]:''})</span>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+
+  return controls + sections;
 }
 function renderLibScripts(){
   const items = filterByBrand(state.scripts);
