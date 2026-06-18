@@ -614,6 +614,22 @@ function loadState(){
   } else {
     seedDemoData();
   }
+  // One-time migration: drop synced HeyGen/Frame.io/Synthesia records without URL thumbnails
+  // so the next Sync now rebuilds them with proper thumbnail_url. Demo records (no externalId) are kept.
+  if(state.videos && Array.isArray(state.videos)){
+    const before = state.videos.length;
+    const SYNCED_HOSTS = ['HeyGen','Frame.io','Synthesia','ElevenLabs'];
+    state.videos = state.videos.filter(function(v){
+      if(!v.externalId) return true;
+      if(!SYNCED_HOSTS.includes(v.host)) return true;
+      const t = v.thumb || '';
+      // Drop if thumb is an emoji (not a URL) so next sync repopulates with real thumbnail.
+      return /^https?:\/\//.test(t);
+    });
+    if(state.videos.length !== before){
+      try{ localStorage.setItem('swc-state', JSON.stringify(state)); }catch(e){}
+    }
+  }
 }
 
 // ---------- SEED DATA ----------
