@@ -1722,28 +1722,43 @@ function deleteContent(id){
 }
 // ----- AI VIDEO / AUDIO TOOL INTEGRATIONS -----
 const INTEGRATIONS = {
-  frameio:    { label:'Frame.io',    tokenUrl:'https://developer.frame.io/app/tokens',         launchUrl:'https://app.frame.io/',           tokenHint:'fio-u-...',     desc:'Frame.io (Adobe) hosts past YouTube masters, promo edits, and archived footage.' },
-  synthesia:  { label:'Synthesia',   tokenUrl:'https://app.synthesia.io/account/api',          launchUrl:'https://app.synthesia.io/',       tokenHint:'API key (paste later)', desc:'Synthesia generates AI avatar videos for training and social.' },
-  heygen:     { label:'HeyGen',      tokenUrl:'https://app.heygen.com/settings/api',           launchUrl:'https://app.heygen.com/',         tokenHint:'API key (paste later)', desc:'HeyGen generates multilingual AI avatar videos.' },
-  higgsfield: { label:'Higgsfield',  tokenUrl:'https://higgsfield.ai/account',                 launchUrl:'https://higgsfield.ai/',          tokenHint:'API key (paste later)', desc:'Higgsfield generates cinematic and product b-roll for social and ads.' },
-  elevenlabs: { label:'ElevenLabs',  tokenUrl:'https://elevenlabs.io/app/settings/api-keys',   launchUrl:'https://elevenlabs.io/app/',      tokenHint:'sk_... (paste later)',  desc:'ElevenLabs generates AI voiceovers and dubbing for video.' },
-  suno:       { label:'Suno',        tokenUrl:'https://suno.com/account',                      launchUrl:'https://suno.com/',               tokenHint:'API key (paste later)', desc:'Suno generates AI music and soundtracks.' },
+  frameio:    { label:'Frame.io',    tokenUrl:'https://developer.frame.io/app/tokens',       launchUrl:'https://app.frame.io/',     tokenHint:'fio-u-...',                   syncable:true,  browserCors:false, desc:'Frame.io (Adobe) hosts past YouTube masters, promo edits, and archived footage.',
+    extraFields:[
+      {key:'accountId',   label:'Account ID',           placeholder:'UUID of your Frame.io account',  hint:'Find in Frame.io v4 → Settings → Developer.'},
+      {key:'workspaceId', label:'Workspace ID',         placeholder:'UUID of your workspace',          hint:'Open a workspace; the URL contains /workspaces/<id>.'},
+      {key:'projectId',   label:'Project ID (optional)',placeholder:'UUID of root project to sync',    hint:'Leave blank to sync workspace root.'},
+    ]},
+  synthesia:  { label:'Synthesia',   tokenUrl:'https://app.synthesia.io/account/api',        launchUrl:'https://app.synthesia.io/', tokenHint:'API key (paste later)',       syncable:true,  browserCors:true,  desc:'Synthesia generates AI avatar videos for training and social.' },
+  heygen:     { label:'HeyGen',      tokenUrl:'https://app.heygen.com/settings/api',         launchUrl:'https://app.heygen.com/',   tokenHint:'API key (paste later)',       syncable:true,  browserCors:false, desc:'HeyGen generates multilingual AI avatar videos.' },
+  higgsfield: { label:'Higgsfield',  tokenUrl:'https://higgsfield.ai/account',               launchUrl:'https://higgsfield.ai/',    tokenHint:'API key (paste later)',       syncable:false, manualNote:'Higgsfield has no stable public list-assets API yet. Store the key here so future syncs can use it; for now, upload finished clips manually.', desc:'Higgsfield generates cinematic and product b-roll for social and ads.' },
+  elevenlabs: { label:'ElevenLabs',  tokenUrl:'https://elevenlabs.io/app/settings/api-keys', launchUrl:'https://elevenlabs.io/app/',tokenHint:'sk_... (paste later)',        syncable:true,  browserCors:true,  desc:'ElevenLabs generates AI voiceovers and dubbing for video.' },
+  suno:       { label:'Suno',        tokenUrl:'https://suno.com/account',                    launchUrl:'https://suno.com/',         tokenHint:'API key (paste later)',       syncable:false, manualNote:'Suno has no official public API. Save account info here for reference; export tracks manually into _Music in OneDrive.', desc:'Suno generates AI music and soundtracks.' },
 };
+const SYNC_FNS = {};  // populated below
 function renderIntegrationRow(key, label, desc){
+  const def = INTEGRATIONS[key] || {};
   const cfg = (state.integrations && state.integrations[key]) || {};
   const hasToken = !!cfg.token;
   const hasAccount = !!cfg.account;
   const dot = hasToken ? 'g' : (hasAccount ? 'b' : 'a');
   let status;
-  if(hasToken)        status = 'Connected &middot; ' + escapeHtml(cfg.tokenMask || '');
-  else if(hasAccount) status = 'Configured &middot; awaiting API key';
+  if(hasToken)        status = 'Connected · ' + escapeHtml(cfg.tokenMask || '');
+  else if(hasAccount) status = 'Configured · awaiting API key';
   else                status = escapeHtml(desc);
+  const lastSync = cfg.lastSyncAt ? ' · Last sync ' + new Date(cfg.lastSyncAt).toLocaleString() : '';
   const btnLabel = hasToken ? 'Manage' : (hasAccount ? 'Add Key' : 'Connect');
+  const canSync = def.syncable && hasToken;
+  const syncBtn = canSync
+    ? `<button class="btn" style="padding:4px 10px; font-size:11px" onclick="syncIntegration('${key}')">Sync now</button>`
+    : '';
   return `
     <div class="rail-item" id="intg_${key}">
       <div class="inbox-meta" style="display:flex; justify-content:space-between; align-items:center; gap:8px">
-        <span style="flex:1; min-width:0"><span class="dot ${dot}"></span><strong>${label}</strong> &middot; <span style="color:var(--muted)">${status}</span></span>
-        <button class="btn" style="padding:4px 10px; font-size:11px" onclick="openIntegrationModal('${key}')">${btnLabel}</button>
+        <span style="flex:1; min-width:0"><span class="dot ${dot}"></span><strong>${label}</strong> · <span style="color:var(--muted)">${status}${lastSync}</span></span>
+        <span style="display:flex; gap:6px">
+          ${syncBtn}
+          <button class="btn" style="padding:4px 10px; font-size:11px" onclick="openIntegrationModal('${key}')">${btnLabel}</button>
+        </span>
       </div>
     </div>`;
 }
@@ -1752,13 +1767,36 @@ function openIntegrationModal(key){
   if(!def){ alert('Unknown integration: '+key); return; }
   const cfg = (state.integrations && state.integrations[key]) || {};
   document.getElementById('modalTitle').textContent = 'Connect ' + def.label;
+  const extraFieldsHtml = (def.extraFields || []).map(function(f){
+    return '<div class="form-row"><label>' + escapeHtml(f.label) + '</label>' +
+      '<input id="intg_x_' + f.key + '" placeholder="' + escapeHtml(f.placeholder||'') + '" value="' + escapeHtml((cfg.extras&&cfg.extras[f.key])||'') + '">' +
+      (f.hint ? '<div style="font-size:11px; color:var(--muted); margin-top:4px">' + escapeHtml(f.hint) + '</div>' : '') +
+      '</div>';
+  }).join('');
+  let statusBlock = '';
+  if(def.syncable === false){
+    statusBlock = '<div style="background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Sync not available yet.</strong> ' + escapeHtml(def.manualNote||'') + '</div>';
+  } else if(def.browserCors === false){
+    statusBlock = '<div style="background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Browser sync may be blocked by CORS.</strong> If “Sync now” fails after saving the key, the credentials are still stored — a scheduled server-side sync can run this connection.</div>';
+  } else {
+    statusBlock = '<div style="background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.4); border-radius:6px; padding:8px 10px; margin-bottom:10px; font-size:12px"><strong>Browser sync ready.</strong> After saving the API key, click “Sync now” to pull assets directly from ' + escapeHtml(def.label) + '.</div>';
+  }
+  const brandSel = '<div class="form-row"><label>Default Brand for synced assets</label><select id="intg_brand">' +
+    '<option value="">— unassigned —</option>' +
+    ['j1','uno','baron','marine','cti','prop'].map(function(b){
+      const names = {j1:'J1 Division', uno:'UNO', baron:'Baron', marine:'CTI Marine Travel', cti:'CTI Group', prop:'CTI Properties'};
+      return '<option value="'+b+'"'+(cfg.defaultBrand===b?' selected':'')+'>'+names[b]+'</option>';
+    }).join('') + '</select></div>';
   document.getElementById('modalBody').innerHTML = `
     <div style="font-size:12px; color:var(--muted); margin-bottom:10px; line-height:1.5">
       ${def.desc} You can save the account now and paste the API key later. The key field can stay empty.
       Get a key from <a href="${def.tokenUrl}" target="_blank" style="color:var(--blue)">${def.tokenUrl.replace(/^https?:\/\//,'')}</a>.
     </div>
+    ${statusBlock}
     <div class="form-row"><label>Account / Workspace</label><input id="intg_account" placeholder="e.g. CTI Group Worldwide" value="${escapeHtml(cfg.account||'')}"></div>
     <div class="form-row"><label>API Key (optional, paste later)</label><input id="intg_token" type="password" placeholder="${cfg.tokenMask ? cfg.tokenMask : def.tokenHint}" autocomplete="off"></div>
+    ${extraFieldsHtml}
+    ${brandSel}
     <div class="form-row"><label>Notes (optional)</label><input id="intg_notes" placeholder="e.g. shared with marketing team" value="${escapeHtml(cfg.notes||'')}"></div>
     <div style="font-size:11px; color:var(--muted); margin-top:6px">Keys are stored only in your browser local storage. For production sync, route via Perplexity secure credential vault.</div>
   `;
@@ -1770,17 +1808,30 @@ function openIntegrationModal(key){
   document.getElementById('modalOverlay').classList.add('open');
 }
 function saveIntegration(key){
+  const def = INTEGRATIONS[key] || {};
   const account = document.getElementById('intg_account').value.trim();
   const token   = document.getElementById('intg_token').value.trim();
   const notes   = document.getElementById('intg_notes').value.trim();
+  const brandEl = document.getElementById('intg_brand');
+  const defaultBrand = brandEl ? brandEl.value : '';
   if(!account){ alert('Account / Workspace required.'); return; }
+  const extras = {};
+  (def.extraFields || []).forEach(function(f){
+    const el = document.getElementById('intg_x_' + f.key);
+    if(el) extras[f.key] = el.value.trim();
+  });
   state.integrations = state.integrations || {};
   const prev = state.integrations[key] || {};
   state.integrations[key] = {
-    account, notes,
+    account: account,
+    notes: notes,
+    defaultBrand: defaultBrand,
+    extras: extras,
     token: token || prev.token || '',
     tokenMask: token ? ('**** ' + token.slice(-4)) : (prev.tokenMask || ''),
     connectedAt: new Date().toISOString(),
+    lastSyncAt: prev.lastSyncAt || null,
+    lastSyncCount: prev.lastSyncCount || 0,
   };
   saveState();
   closeModal();
@@ -1905,6 +1956,147 @@ loadState();
 const initialRoute = (location.hash || '#overview').replace('#','');
 route(initialRoute);
 saveState();
+
+
+// ----- BROWSER-SIDE SYNC ENGINE -----
+async function syncIntegration(key){
+  const def = INTEGRATIONS[key];
+  const cfg = state.integrations && state.integrations[key];
+  if(!def || !cfg || !cfg.token){ alert('Configure account and API key first.'); return; }
+  const fn = SYNC_FNS[key];
+  if(!fn){ alert('No sync function for ' + def.label); return; }
+  try {
+    const result = await fn(cfg);
+    cfg.lastSyncAt = new Date().toISOString();
+    cfg.lastSyncCount = result.added || 0;
+    saveState();
+    renderPage();
+    alert(def.label + ': synced ' + result.added + ' new asset(s). ' + (result.total ? 'Total fetched: ' + result.total : ''));
+  } catch(e){
+    console.error(e);
+    let msg = e.message || String(e);
+    if(/cors|failed to fetch|networkerror/i.test(msg)){
+      msg += '\n\nThis API blocks browser calls (CORS). Credentials are saved — a server-side scheduled sync can run this connection.';
+    }
+    alert(def.label + ' sync failed:\n' + msg);
+    renderPage();
+  }
+}
+function mergeSyncedVideos(items, hostLabel){
+  state.videos = state.videos || [];
+  const existingIds = new Set(state.videos.map(function(v){return v.externalId;}).filter(Boolean));
+  let added = 0;
+  items.forEach(function(it){
+    if(it.externalId && existingIds.has(it.externalId)) return;
+    state.videos.push({
+      id: 'v_' + hostLabel.toLowerCase() + '_' + (it.externalId || Math.random().toString(36).slice(2,9)),
+      externalId: it.externalId || null,
+      title: it.title || 'Untitled',
+      brand: it.brand || '',
+      host: hostLabel,
+      url: it.url || '',
+      duration: it.duration || '',
+      uploaded: it.uploaded || new Date().toISOString().slice(0,10),
+      thumb: it.thumb || '\uD83C\uDFAC',
+      linkedScript: '',
+    });
+    added++;
+  });
+  return added;
+}
+function _fmtDuration(sec){
+  sec = Math.round(Number(sec)||0);
+  const m = Math.floor(sec/60), s = sec%60;
+  return m + ':' + String(s).padStart(2,'0');
+}
+async function syncSynthesia(cfg){
+  const res = await fetch('https://api.synthesia.io/v2/videos?limit=50', {
+    headers: { 'Authorization': cfg.token, 'Accept': 'application/json' }
+  });
+  if(!res.ok) throw new Error('Synthesia API ' + res.status + ': ' + (await res.text()).slice(0,200));
+  const data = await res.json();
+  const list = data.videos || data.data || [];
+  const videos = list.map(function(v){
+    return {
+      externalId: v.id,
+      title: v.title || v.name || 'Synthesia Video',
+      brand: cfg.defaultBrand || '',
+      url: v.download || v.url || ('https://app.synthesia.io/video/' + v.id),
+      duration: v.duration ? _fmtDuration(v.duration) : '',
+      uploaded: (v.createdAt || v.created_at || '').slice(0,10),
+      thumb: '\uD83E\uDD16',
+    };
+  });
+  return { added: mergeSyncedVideos(videos, 'Synthesia'), total: videos.length };
+}
+async function syncElevenLabs(cfg){
+  const res = await fetch('https://api.elevenlabs.io/v1/history?page_size=50', {
+    headers: { 'xi-api-key': cfg.token, 'Accept': 'application/json' }
+  });
+  if(!res.ok) throw new Error('ElevenLabs API ' + res.status + ': ' + (await res.text()).slice(0,200));
+  const data = await res.json();
+  const items = (data.history || []).map(function(h){
+    return {
+      externalId: h.history_item_id,
+      title: (h.text || 'Voice clip').slice(0,60),
+      brand: cfg.defaultBrand || '',
+      url: 'https://elevenlabs.io/app/history',
+      duration: h.character_count ? Math.round(h.character_count/15) + 's' : '',
+      uploaded: h.date_unix ? new Date(h.date_unix*1000).toISOString().slice(0,10) : '',
+      thumb: '\uD83C\uDF99\uFE0F',
+    };
+  });
+  return { added: mergeSyncedVideos(items, 'ElevenLabs'), total: items.length };
+}
+async function syncHeyGen(cfg){
+  const res = await fetch('https://api.heygen.com/v1/video.list?limit=50', {
+    headers: { 'X-Api-Key': cfg.token, 'Accept': 'application/json' }
+  });
+  if(!res.ok) throw new Error('HeyGen API ' + res.status + ': ' + (await res.text()).slice(0,200));
+  const data = await res.json();
+  const list = (data.data && data.data.videos) || data.videos || [];
+  const items = list.map(function(v){
+    return {
+      externalId: v.video_id || v.id,
+      title: v.video_title || v.title || 'HeyGen Video',
+      brand: cfg.defaultBrand || '',
+      url: v.video_url || ('https://app.heygen.com/videos/' + (v.video_id||v.id)),
+      duration: v.duration ? _fmtDuration(v.duration) : '',
+      uploaded: v.created_at ? new Date(v.created_at*1000).toISOString().slice(0,10) : '',
+      thumb: '\uD83D\uDC64',
+    };
+  });
+  return { added: mergeSyncedVideos(items, 'HeyGen'), total: items.length };
+}
+async function syncFrameio(cfg){
+  const accountId   = cfg.extras && cfg.extras.accountId;
+  const workspaceId = cfg.extras && cfg.extras.workspaceId;
+  if(!accountId || !workspaceId) throw new Error('Frame.io requires Account ID and Workspace ID. Open Connect Frame.io and fill those fields.');
+  const url = 'https://api.frame.io/v4/accounts/' + encodeURIComponent(accountId) + '/workspaces/' + encodeURIComponent(workspaceId) + '/projects';
+  const res = await fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/json' }
+  });
+  if(!res.ok) throw new Error('Frame.io API ' + res.status + ': ' + (await res.text()).slice(0,200));
+  const data = await res.json();
+  const list = data.data || [];
+  const items = list.map(function(p){
+    return {
+      externalId: p.id,
+      title: p.name || 'Frame.io Project',
+      brand: cfg.defaultBrand || '',
+      url: 'https://next.frame.io/project/' + p.id,
+      duration: '',
+      uploaded: (p.inserted_at || '').slice(0,10),
+      thumb: '\uD83C\uDFA5',
+    };
+  });
+  return { added: mergeSyncedVideos(items, 'Frame.io'), total: items.length };
+}
+SYNC_FNS.synthesia  = syncSynthesia;
+SYNC_FNS.elevenlabs = syncElevenLabs;
+SYNC_FNS.heygen     = syncHeyGen;
+SYNC_FNS.frameio    = syncFrameio;
+
 </script>
 </body>
 </html>
