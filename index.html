@@ -1352,7 +1352,7 @@ function pageLanding(){
       </div>
       <div class="page-actions">
         <button class="btn">🔧 UTM Builder</button>
-        <button class="btn primary">+ Add Landing Page</button>
+        <button class="btn primary" onclick="openLandingModal()">+ Add Landing Page</button>
       </div>
     </div>
 
@@ -1660,6 +1660,46 @@ function deleteContent(id){
   closeModal();
   renderPage();
   renderRightRail();
+}
+function openLandingModal(){
+  document.getElementById('modalTitle').textContent = 'Add Landing Page';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-row"><label>Name</label><input id="l_name" placeholder="e.g. J1 Apply"></div>
+    <div class="form-row"><label>Brand</label><select id="l_brand">${BRANDS.filter(b=>b.id!=='all').map(b=>`<option value="${b.id}">${b.emoji} ${b.name}</option>`).join('')}</select></div>
+    <div class="form-row"><label>URL</label><input id="l_url" placeholder="https://example.com/landing"></div>
+    <div class="form-row"><label>CTA</label><input id="l_cta" placeholder="Apply Now"></div>
+    <div class="form-row"><label>UTM Suffix (optional)</label><input id="l_utm" placeholder="?utm_source=ig&utm_medium=reel&utm_campaign=..."></div>
+    <div class="form-row"><label>Campaign (optional)</label><select id="l_campaign"><option value="">— None —</option>${(state.campaigns||[]).map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('')}</select></div>
+    <div class="form-row"><label>Status</label><select id="l_status"><option value="active">Active</option><option value="paused">Paused</option><option value="archived">Archived</option></select></div>
+  `;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn primary" onclick="saveLanding()">Add Landing Page</button>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function saveLanding(){
+  const name = document.getElementById('l_name').value.trim();
+  let url    = document.getElementById('l_url').value.trim();
+  if(!name){ alert('Name required.'); return; }
+  if(!url){ alert('URL required.'); return; }
+  if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  state.landingPages.push({
+    id:'l'+Date.now(),
+    brand: document.getElementById('l_brand').value,
+    name,
+    url,
+    cta: document.getElementById('l_cta').value.trim() || 'Learn More',
+    utm: document.getElementById('l_utm').value.trim(),
+    campaign: document.getElementById('l_campaign').value,
+    status: document.getElementById('l_status').value,
+    visits: 0,
+    conversions: 0,
+  });
+  saveState();
+  closeModal();
+  renderPage();
+  renderRightRail && renderRightRail();
 }
 function openSiteModal(){
   document.getElementById('modalTitle').textContent = 'Add Web Property';
