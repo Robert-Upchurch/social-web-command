@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social & Web Command · Poseidon v6</title>
+<style>
+/* ===== POSEIDON THEME ENGINE (mirrors poseidon-command.html) ===== */
+:root, [data-theme="dark"]{
+  --accent:#dc2626; --accent-dim:#991b1b;
+  --bg:#0b0b0d; --panel:#141416; --panel-2:#1b1b1f;
+  --line:#27272a; --txt:#e7e7ea; --muted:#8a8a92;
+  --green:#22c55e; --amber:#f59e0b; --blue:#38bdf8; --grey:#52525b;
+  --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+[data-theme="light"]{
+  --accent:#dc2626; --accent-dim:#b91c1c;
+  --bg:#f4f5f7; --panel:#ffffff; --panel-2:#f8f9fb;
+  --line:#e3e5ea; --txt:#1c1d22; --muted:#6b6f78;
+  --green:#16a34a; --amber:#d97706; --blue:#0284c7; --grey:#9aa0aa;
+}
+[data-theme="harbor"]{
+  --accent:#0d9488; --accent-dim:#0f766e;
+  --bg:#eef2f4; --panel:#ffffff; --panel-2:#f5f8f9;
+  --line:#dde5e8; --txt:#13242b; --muted:#5b6e76;
+  --green:#16a34a; --amber:#d97706; --blue:#0284c7; --grey:#9aa0aa;
+}
+[data-theme="contrast"]{
+  --accent:#ff3b3b; --accent-dim:#d10000;
+  --bg:#000000; --panel:#0d0d0d; --panel-2:#161616;
+  --line:#444444; --txt:#ffffff; --muted:#bbbbbb;
+  --green:#22c55e; --amber:#f59e0b; --blue:#38bdf8; --grey:#666666;
+}
+[data-theme="marine"]{
+  --accent:#1565c0; --accent-dim:#0d3b66;
+  --bg:#eaf1f6; --panel:#ffffff; --panel-2:#f3f8fc;
+  --line:#d8e3ec; --txt:#0a2540; --muted:#456277;
+  --green:#16a34a; --amber:#d97706; --blue:#0284c7; --grey:#7d8b96;
+}
+
+*{box-sizing:border-box; margin:0; padding:0}
+html,body{height:100%; overflow:hidden}
+body{
+  background:var(--bg); color:var(--txt);
+  font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  font-size:14px; -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit; cursor:pointer; border:none; background:none; color:inherit}
+a{color:inherit; text-decoration:none}
+input,select,textarea{font-family:inherit; color:inherit}
+
+/* ===== TOP BAR ===== */
+.topbar{
+  position:fixed; top:0; left:0; right:0; height:56px;
+  background:var(--panel-2); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; padding:0 18px; gap:18px;
+  z-index:30;
+}
+.brand{display:flex; align-items:center; gap:10px}
+.brand svg{stroke:var(--accent); stroke-width:2; fill:none}
+.brand-name{font-weight:800; font-size:14px; letter-spacing:.5px}
+.brand-sub{font-size:10px; font-weight:500; letter-spacing:2px; color:var(--muted)}
+.search{
+  flex:1; max-width:400px; height:34px; border-radius:8px;
+  background:var(--panel); border:1px solid var(--line);
+  padding:0 12px; font-size:13px; color:var(--txt);
+}
+.search::placeholder{color:var(--muted)}
+.theme-switch{display:flex; gap:4px}
+.theme-btn{
+  width:26px; height:26px; border-radius:6px; border:1px solid var(--line);
+  cursor:pointer; transition:transform .15s;
+}
+.theme-btn:hover{transform:scale(1.1)}
+.theme-btn.active{outline:2px solid var(--accent); outline-offset:1px}
+.theme-btn.dark{background:#0b0b0d}
+.theme-btn.light{background:#f4f5f7}
+.theme-btn.harbor{background:#0d9488}
+.theme-btn.contrast{background:#000}
+.theme-btn.marine{background:#1565c0}
+.status-pills{display:flex; gap:6px; font-size:10px}
+.pill{
+  padding:3px 8px; border-radius:999px; border:1px solid var(--line);
+  background:var(--panel); color:var(--muted); font-weight:600; letter-spacing:.3px;
+}
+.pill.live{color:var(--green); border-color:color-mix(in srgb, var(--green) 40%, transparent)}
+.avatar{
+  width:30px; height:30px; border-radius:50%; background:var(--accent);
+  color:#fff; font-weight:700; font-size:12px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ===== MAIN SHELL ===== */
+.shell{
+  position:fixed; top:56px; left:0; right:0; bottom:32px;
+  display:grid; grid-template-columns:236px 1fr 320px;
+}
+.sidebar{
+  background:var(--panel-2); border-right:1px solid var(--line);
+  overflow-y:auto; padding:14px 0;
+}
+.main{overflow-y:auto; padding:20px 22px}
+.rightbar{
+  background:var(--panel-2); border-left:1px solid var(--line);
+  overflow-y:auto; padding:14px;
+}
+
+/* ===== SIDEBAR NAV ===== */
+.nav-group{margin-bottom:16px}
+.nav-group-header{
+  font-size:10px; font-weight:700; letter-spacing:1.5px;
+  text-transform:uppercase; color:var(--grey);
+  padding:6px 16px;
+}
+.nav-item{
+  display:flex; align-items:center; gap:10px;
+  padding:8px 16px; cursor:pointer; font-size:13px;
+  color:var(--txt); border-left:2px solid transparent;
+  transition:background .12s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--accent) 8%, transparent)}
+.nav-item.active{
+  background:color-mix(in srgb, var(--accent) 12%, transparent);
+  border-left-color:var(--accent);
+}
+.nav-icon{font-size:14px; width:18px; text-align:center}
+.nav-label{flex:1}
+.nav-badge{
+  font-size:9px; font-weight:700; letter-spacing:.5px;
+  padding:1px 5px; border-radius:4px;
+}
+.nav-badge.live{background:color-mix(in srgb, var(--green) 18%, transparent); color:var(--green)}
+.nav-badge.ph{background:color-mix(in srgb, var(--amber) 18%, transparent); color:var(--amber)}
+.nav-badge.new{background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent)}
+
+/* ===== PAGE / CARD STYLES ===== */
+.page-header{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  margin-bottom:18px; gap:12px; flex-wrap:wrap;
+}
+.page-title{font-size:22px; font-weight:800; letter-spacing:-.01em}
+.page-sub{font-size:12px; color:var(--muted); margin-top:3px}
+.page-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+
+.btn{
+  padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600;
+  border:1px solid var(--line); background:var(--panel); color:var(--txt);
+  cursor:pointer; transition:all .12s; display:inline-flex; align-items:center; gap:6px;
+}
+.btn:hover{border-color:var(--accent); color:var(--accent)}
+.btn.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+.btn.primary:hover{background:var(--accent-dim); color:#fff; border-color:var(--accent-dim)}
+.btn.sm{padding:4px 10px; font-size:11px}
+
+.tile, .card{
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:12px; padding:14px; box-shadow:var(--shadow);
+}
+.section-title{
+  font-size:13px; font-weight:600; text-transform:uppercase;
+  letter-spacing:.5px; color:var(--muted); margin-bottom:10px;
+}
+
+/* KPI tiles */
+.kpi-row{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:16px}
+.kpi{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px}
+.kpi-label{font-size:11px; color:var(--muted); margin-bottom:6px}
+.kpi-value{font-size:26px; font-weight:800; line-height:1}
+.kpi-meta{font-size:11px; color:var(--muted); margin-top:6px; display:flex; align-items:center; gap:4px}
+.kpi-meta.up{color:var(--green)}
+.kpi-meta.down{color:var(--accent)}
+
+/* Status dots */
+.dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px}
+.dot.g{background:var(--green)} .dot.a{background:var(--amber)}
+.dot.r{background:var(--accent)} .dot.b{background:var(--blue)} .dot.x{background:var(--grey)}
+
+/* Badge */
+.badge{
+  font-size:9px; font-weight:700; letter-spacing:.5px;
+  padding:2px 6px; border-radius:5px; text-transform:uppercase;
+  display:inline-block;
+}
+.badge.g{background:color-mix(in srgb, var(--green) 18%, transparent); color:var(--green)}
+.badge.a{background:color-mix(in srgb, var(--amber) 18%, transparent); color:var(--amber)}
+.badge.r{background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent)}
+.badge.b{background:color-mix(in srgb, var(--blue) 18%, transparent); color:var(--blue)}
+.badge.x{background:color-mix(in srgb, var(--grey) 18%, transparent); color:var(--grey)}
+
+/* Brand switcher */
+.brand-switcher{
+  display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;
+  background:var(--panel); padding:8px; border-radius:10px; border:1px solid var(--line);
+}
+.brand-chip{
+  padding:6px 12px; border-radius:7px; font-size:11px; font-weight:600;
+  border:1px solid var(--line); cursor:pointer; transition:all .12s;
+  color:var(--muted); background:transparent;
+}
+.brand-chip:hover{color:var(--txt); border-color:var(--accent)}
+.brand-chip.active{background:var(--accent); color:#fff; border-color:var(--accent)}
+
+/* Filter bar */
+.filter-bar{
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  background:var(--panel); padding:10px; border-radius:10px; border:1px solid var(--line);
+  margin-bottom:16px;
+}
+.filter-select, .filter-input{
+  padding:6px 10px; border-radius:6px; font-size:12px;
+  background:var(--panel-2); border:1px solid var(--line); color:var(--txt);
+  min-width:120px;
+}
+.filter-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-right:4px}
+
+/* Tables */
+table{width:100%; border-collapse:collapse; font-size:12px}
+th{
+  text-align:left; padding:10px 12px; font-size:10px; font-weight:700;
+  text-transform:uppercase; letter-spacing:.5px; color:var(--muted);
+  border-bottom:1px solid var(--line); background:var(--panel-2);
+}
+td{padding:10px 12px; border-bottom:1px solid var(--line); color:var(--txt)}
+tr:hover td{background:color-mix(in srgb, var(--accent) 4%, transparent)}
+tr:last-child td{border-bottom:none}
+
+/* Bars (spark + funnel) */
+.spark{display:flex; align-items:flex-end; gap:3px; height:50px}
+.spark .bar{
+  flex:1; background:linear-gradient(180deg, var(--accent), var(--accent-dim));
+  border-radius:2px 2px 0 0; min-height:2px;
+}
+.funnel-bar{
+  height:18px; border-radius:4px;
+  background:linear-gradient(90deg, var(--accent), var(--accent-dim));
+  position:relative;
+}
+.funnel-row{display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:11px}
+.funnel-label{width:120px; color:var(--muted)}
+.funnel-track{flex:1; background:var(--panel-2); border-radius:4px; height:18px; overflow:hidden}
+.funnel-value{width:60px; text-align:right; font-weight:600}
+
+/* Calendar */
+.cal-grid{
+  display:grid; grid-template-columns:repeat(7, 1fr); gap:6px;
+  background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px;
+}
+.cal-dow{
+  font-size:10px; font-weight:700; text-transform:uppercase; color:var(--muted);
+  letter-spacing:.5px; padding:6px 0; text-align:center;
+}
+.cal-cell{
+  min-height:90px; background:var(--panel-2); border:1px solid var(--line);
+  border-radius:6px; padding:6px; position:relative; font-size:11px;
+  transition:border-color .12s;
+}
+.cal-cell:hover{border-color:var(--accent)}
+.cal-cell.other-month{opacity:.35}
+.cal-cell.today{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 6%, var(--panel-2))}
+.cal-date{font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px}
+.cal-event{
+  background:var(--panel); border-left:3px solid var(--accent);
+  padding:3px 5px; border-radius:3px; margin-bottom:3px;
+  font-size:10px; cursor:grab; overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.cal-event[draggable=true]:active{cursor:grabbing}
+.cal-event.draft{border-left-color:var(--grey)}
+.cal-event.review{border-left-color:var(--amber)}
+.cal-event.approved{border-left-color:var(--blue)}
+.cal-event.scheduled{border-left-color:var(--accent)}
+.cal-event.published{border-left-color:var(--green)}
+
+/* Modal */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.55);
+  display:none; align-items:center; justify-content:center; z-index:100;
+}
+.modal-overlay.open{display:flex}
+.modal{
+  background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  width:560px; max-width:92vw; max-height:88vh; overflow-y:auto;
+  box-shadow:0 10px 40px rgba(0,0,0,.4);
+}
+.modal-header{
+  padding:16px 18px; border-bottom:1px solid var(--line);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.modal-title{font-size:15px; font-weight:700}
+.modal-close{
+  background:transparent; border:none; color:var(--muted);
+  font-size:20px; cursor:pointer; padding:0; width:24px; height:24px;
+}
+.modal-close:hover{color:var(--accent)}
+.modal-body{padding:18px}
+.modal-footer{
+  padding:14px 18px; border-top:1px solid var(--line);
+  display:flex; justify-content:flex-end; gap:8px;
+}
+.form-row{margin-bottom:12px}
+.form-row label{display:block; font-size:11px; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.5px; font-weight:600}
+.form-row input, .form-row select, .form-row textarea{
+  width:100%; padding:8px 10px; border-radius:6px;
+  background:var(--panel-2); border:1px solid var(--line); color:var(--txt);
+  font-size:13px;
+}
+.form-row textarea{resize:vertical; min-height:60px; font-family:inherit}
+.form-grid-2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+
+/* Right rail */
+.rail-section{margin-bottom:18px}
+.rail-section-title{font-size:10px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--grey); margin-bottom:8px}
+.rail-item{
+  background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:10px; margin-bottom:6px; font-size:11px;
+}
+.rail-item-title{font-weight:600; color:var(--txt); margin-bottom:3px; font-size:12px}
+.rail-item-meta{color:var(--muted); font-size:10px}
+
+/* Status strip (bottom) */
+.strip{
+  position:fixed; bottom:0; left:0; right:0; height:32px;
+  background:var(--panel-2); border-top:1px solid var(--line);
+  display:flex; align-items:center; padding:0 18px; gap:18px;
+  font-size:11px; color:var(--grey); z-index:25;
+}
+.strip span{display:inline-flex; align-items:center; gap:6px}
+
+/* Tabs */
+.tabs{
+  display:flex; gap:4px; padding:4px; background:var(--panel-2);
+  border-radius:8px; border:1px solid var(--line); margin-bottom:14px;
+  width:fit-content;
+}
+.tab{
+  padding:6px 14px; border-radius:6px; font-size:11px; font-weight:600;
+  color:var(--muted); cursor:pointer; transition:all .12s; background:transparent;
+  border:none;
+}
+.tab:hover{color:var(--txt)}
+.tab.active{background:var(--accent); color:#fff}
+
+/* Grids */
+.grid-2{display:grid; grid-template-columns:repeat(2, 1fr); gap:12px}
+.grid-3{display:grid; grid-template-columns:repeat(3, 1fr); gap:12px}
+.grid-4{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px}
+
+/* Empty state */
+.empty{
+  text-align:center; padding:40px 20px; color:var(--muted);
+  background:var(--panel); border:1px dashed var(--line); border-radius:10px;
+}
+.empty-icon{font-size:28px; margin-bottom:8px; opacity:.5}
+
+/* Video thumbnail */
+.video-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  overflow:hidden; cursor:pointer; transition:border-color .12s;
+}
+.video-card:hover{border-color:var(--accent)}
+.video-thumb{
+  aspect-ratio:16/9; background:var(--panel-2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:32px; color:var(--muted); position:relative;
+}
+.video-host-badge{
+  position:absolute; top:6px; right:6px;
+  font-size:8px; font-weight:700; padding:2px 5px;
+  background:rgba(0,0,0,.7); color:#fff; border-radius:3px; letter-spacing:.5px;
+}
+.video-body{padding:10px}
+.video-title{font-size:12px; font-weight:600; margin-bottom:4px; line-height:1.3}
+.video-meta{font-size:10px; color:var(--muted); display:flex; gap:8px}
+
+/* Heat map */
+.heat-grid{display:grid; grid-template-columns:auto repeat(7, 1fr); gap:2px}
+.heat-cell{aspect-ratio:1; border-radius:3px; min-height:18px}
+.heat-label{font-size:10px; color:var(--muted); display:flex; align-items:center; padding-right:6px}
+
+/* Engagement inbox */
+.inbox-item{
+  background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  padding:12px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start;
+}
+.inbox-platform{
+  width:32px; height:32px; border-radius:6px; background:var(--panel-2);
+  display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;
+}
+.inbox-body{flex:1; min-width:0}
+.inbox-meta{font-size:10px; color:var(--muted); margin-bottom:4px; display:flex; gap:8px; align-items:center}
+.inbox-text{font-size:12px; line-height:1.4}
+.inbox-actions{display:flex; gap:4px; margin-top:6px}
+
+/* Responsive */
+@media (max-width:1280px){
+  .shell{grid-template-columns:236px 1fr}
+  .rightbar{display:none}
+}
+@media (max-width:980px){
+  .shell{grid-template-columns:60px 1fr}
+  .nav-label, .nav-badge{display:none}
+  .nav-group-header{font-size:0; padding:6px 0}
+  .kpi-row, .grid-4{grid-template-columns:repeat(2, 1fr)}
+  .grid-3{grid-template-columns:1fr}
+  .search, .brand-sub{display:none}
+}
+
+/* Misc */
+.muted{color:var(--muted)}
+.flex{display:flex; align-items:center; gap:8px}
+.gap-8{gap:8px} .gap-12{gap:12px}
+.mb-8{margin-bottom:8px} .mb-12{margin-bottom:12px} .mb-16{margin-bottom:16px}
+.text-sm{font-size:11px} .text-xs{font-size:10px}
+.text-right{text-align:right}
+.scroll-x{overflow-x:auto}
+
+/* Approval row */
+.approval-row{
+  display:flex; gap:10px; align-items:center;
+  padding:10px; background:var(--panel-2); border-radius:8px; margin-bottom:6px;
+  border:1px solid var(--line);
+}
+.approval-thumb{
+  width:36px; height:36px; border-radius:6px; background:var(--panel);
+  display:flex; align-items:center; justify-content:center; font-size:16px;
+}
+</style>
+</head>
+<body>
+
+<!-- ====== TOP BAR ====== -->
+<div class="topbar">
+  <div class="brand">
+    <svg width="22" height="22" viewBox="0 0 24 24"><path d="M12 2v20M8 6l4-4 4 4M6 10c0 6 6 10 6 10s6-4 6-10M3 8l3 2M21 8l-3 2"/></svg>
+    <div>
+      <div class="brand-name">POSEIDON</div>
+      <div class="brand-sub">SOCIAL & WEB COMMAND</div>
+    </div>
+  </div>
+  <input class="search" id="globalSearch" placeholder="Search content, scripts, landing pages, prospects...">
+  <div class="theme-switch">
+    <button class="theme-btn dark active" data-theme-btn="dark" title="Midnight"></button>
+    <button class="theme-btn light" data-theme-btn="light" title="Daylight"></button>
+    <button class="theme-btn harbor" data-theme-btn="harbor" title="Harbor"></button>
+    <button class="theme-btn contrast" data-theme-btn="contrast" title="Contrast"></button>
+    <button class="theme-btn marine" data-theme-btn="marine" title="Marine"></button>
+  </div>
+  <div class="status-pills">
+    <span class="pill live"><span class="dot g"></span>LIVE</span>
+    <span class="pill">v0.9</span>
+  </div>
+  <div class="avatar" title="Robert Upchurch">RU</div>
+</div>
+
+<!-- ====== MAIN SHELL ====== -->
+<div class="shell">
+
+  <!-- ===== SIDEBAR NAV ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="nav-group">
+      <div class="nav-group-header">Command</div>
+      <div class="nav-item active" data-route="overview"><span class="nav-icon">⌘</span><span class="nav-label">Overview</span><span class="nav-badge live">LIVE</span></div>
+      <div class="nav-item" data-route="web-analytics"><span class="nav-icon">📊</span><span class="nav-label">Web Analytics</span><span class="nav-badge new">NEW</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-header">Content Ops</div>
+      <div class="nav-item" data-route="calendar"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span><span class="nav-badge live">LIVE</span></div>
+      <div class="nav-item" data-route="library"><span class="nav-icon">🎬</span><span class="nav-label">Script & Video</span><span class="nav-badge live">LIVE</span></div>
+      <div class="nav-item" data-route="engagement"><span class="nav-icon">💬</span><span class="nav-label">Engagement</span><span class="nav-badge live">LIVE</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-header">Performance</div>
+      <div class="nav-item" data-route="roi"><span class="nav-icon">💰</span><span class="nav-label">Spend & ROI</span><span class="nav-badge live">LIVE</span></div>
+      <div class="nav-item" data-route="landing"><span class="nav-icon">🔗</span><span class="nav-label">Landing Pages</span><span class="nav-badge live">LIVE</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-header">Sales Intel</div>
+      <div class="nav-item" data-route="prospects"><span class="nav-icon">🎯</span><span class="nav-label">Prospects</span><span class="nav-badge live">LIVE</span></div>
+      <div class="nav-item" data-route="presentations"><span class="nav-icon">📑</span><span class="nav-label">Presentations</span><span class="nav-badge live">LIVE</span></div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-header">System</div>
+      <div class="nav-item" data-route="brands"><span class="nav-icon">🏢</span><span class="nav-label">Brand Workspaces</span></div>
+      <div class="nav-item" data-route="settings"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main" id="mainPanel">
+    <!-- Pages render here -->
+  </main>
+
+  <!-- ===== RIGHT RAIL ===== -->
+  <aside class="rightbar" id="rightbar">
+    <div class="rail-section">
+      <div class="rail-section-title">⚑ Awaiting Approval</div>
+      <div id="railApprovals"></div>
+    </div>
+    <div class="rail-section">
+      <div class="rail-section-title">🔔 Alerts</div>
+      <div id="railAlerts"></div>
+    </div>
+    <div class="rail-section">
+      <div class="rail-section-title">📈 Today's Top Mover</div>
+      <div id="railTopMover"></div>
+    </div>
+    <div class="rail-section">
+      <div class="rail-section-title">🤖 Quick Actions</div>
+      <button class="btn primary" style="width:100%; justify-content:center; margin-bottom:6px" onclick="openContentModal()">+ New Content</button>
+      <button class="btn" style="width:100%; justify-content:center; margin-bottom:6px" onclick="exportData()">Export JSON</button>
+      <button class="btn" style="width:100%; justify-content:center" onclick="document.getElementById('importInput').click()">Import JSON</button>
+      <input type="file" id="importInput" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </aside>
+</div>
+
+<!-- ====== STATUS STRIP ====== -->
+<div class="strip">
+  <span><span class="dot g"></span>Build v0.9 · Social & Web Command</span>
+  <span>🔄 Auto-saved <span id="lastSaved">just now</span></span>
+  <span>🔒 RBAC: Phase 1 (UI only)</span>
+  <span>📦 <span id="dataCounter">0</span> records local</span>
+  <span style="margin-left:auto">© 2026 CTI Group Worldwide Services, Inc.</span>
+</div>
+
+<!-- ====== MODAL ====== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Modal</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SOCIAL & WEB COMMAND — Application logic
+   Pure vanilla JS. No frameworks, no CDN.
+   ============================================================ */
+
+// ---------- THEME ENGINE ----------
+const themeButtons = document.querySelectorAll('[data-theme-btn]');
+themeButtons.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const theme = btn.getAttribute('data-theme-btn');
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('swc-theme', theme);
+    themeButtons.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+// Restore theme
+(function(){
+  const saved = localStorage.getItem('swc-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  themeButtons.forEach(b=>b.classList.toggle('active', b.getAttribute('data-theme-btn')===saved));
+})();
+
+// ---------- BRANDS ----------
+const BRANDS = [
+  {id:'all',    name:'All Brands',          color:'#dc2626', emoji:'⌘'},
+  {id:'uno',    name:'UNO',                 color:'#f59e0b', emoji:'👕'},
+  {id:'baron',  name:'Baron',               color:'#0ea5e9', emoji:'🎖️'},
+  {id:'marine', name:'CTI Marine Travel',   color:'#1565c0', emoji:'✈️'},
+  {id:'cti',    name:'CTI Group',           color:'#dc2626', emoji:'🌐'},
+  {id:'prop',   name:'CTI Properties',      color:'#16a34a', emoji:'🏠'},
+  {id:'j1',     name:'J1 Division',         color:'#a855f7', emoji:'🎓'},
+];
+const PLATFORMS = ['Instagram','Facebook','TikTok','YouTube','LinkedIn','X','Pinterest','Adobe Express'];
+const CONTENT_TYPES = ['Reel','Short','Carousel','Story','Long-form Video','Static Post','Live'];
+const STATUSES = ['idea','draft','review','approved','scheduled','published','paused','archived'];
+const STATUS_LABEL = {idea:'Idea',draft:'Draft',review:'Ready for Review',approved:'Approved',scheduled:'Scheduled',published:'Published',paused:'Paused',archived:'Archived'};
+const ROLES = ['Super Admin','Executive Reviewer','Brand Manager','Content Producer','Scheduler','Analyst','Sales/Outreach'];
+
+// ---------- STATE ----------
+let state = {
+  currentBrand: 'all',
+  currentRoute: 'overview',
+  content: [],
+  scripts: [],
+  videos: [],
+  landingPages: [],
+  prospects: [],
+  presentations: [],
+  engagement: [],
+  spend: [],
+  sites: [],
+  campaigns: [],
+};
+
+// ---------- PERSISTENCE ----------
+function saveState(){
+  localStorage.setItem('swc-state', JSON.stringify(state));
+  document.getElementById('lastSaved').textContent = 'just now';
+  document.getElementById('dataCounter').textContent =
+    state.content.length + state.videos.length + state.scripts.length +
+    state.landingPages.length + state.prospects.length + state.presentations.length;
+}
+function loadState(){
+  const raw = localStorage.getItem('swc-state');
+  if(raw){
+    try{ state = Object.assign(state, JSON.parse(raw)); }catch(e){ console.warn(e); }
+  } else {
+    seedDemoData();
+  }
+}
+
+// ---------- SEED DATA ----------
+function seedDemoData(){
+  const today = new Date();
+  const d = (off)=>{ const x = new Date(today); x.setDate(x.getDate()+off); return x.toISOString().split('T')[0]; };
+
+  state.campaigns = [
+    {id:'c1', name:'J1 Summer 2026 Recruitment', brand:'j1', objective:'recruitment', status:'active'},
+    {id:'c2', name:'UNO Uniforms Q3 Launch',    brand:'uno', objective:'sales', status:'active'},
+    {id:'c3', name:'Baron Promo Trade Show',    brand:'baron', objective:'awareness', status:'active'},
+    {id:'c4', name:'CTI Marine Cruise Lines Outreach', brand:'marine', objective:'leads', status:'active'},
+    {id:'c5', name:'CTI Properties Tenant Drive',brand:'prop', objective:'bookings', status:'active'},
+    {id:'c6', name:'CTI Group Corporate Brand', brand:'cti', objective:'awareness', status:'active'},
+  ];
+
+  state.sites = [
+    {id:'s1', brand:'cti',    domain:'cti-usa.com',            ga4:'GA4-PROPERTY-ID', uptime:99.98, pageviews30d:42100, avgLoad:1.4, topPage:'/services', status:'healthy'},
+    {id:'s2', brand:'j1',     domain:'j1.cti-usa.com',         ga4:'GA4-PROPERTY-ID', uptime:99.92, pageviews30d:28900, avgLoad:1.7, topPage:'/apply',    status:'healthy'},
+    {id:'s3', brand:'uno',    domain:'uniformsnumberone.com',  ga4:'GA4-PROPERTY-ID', uptime:99.85, pageviews30d:18450, avgLoad:2.1, topPage:'/shop',     status:'watch'},
+    {id:'s4', brand:'baron',  domain:'baronpromotions.com',    ga4:'GA4-PROPERTY-ID', uptime:99.95, pageviews30d:9200,  avgLoad:1.9, topPage:'/catalog',  status:'healthy'},
+    {id:'s5', brand:'marine', domain:'ctimarinetravel.com',    ga4:'GA4-PROPERTY-ID', uptime:99.90, pageviews30d:6800,  avgLoad:1.8, topPage:'/destinations', status:'healthy'},
+    {id:'s6', brand:'prop',   domain:'ctiproperties.com',      ga4:'GA4-PROPERTY-ID', uptime:99.99, pageviews30d:3200,  avgLoad:1.3, topPage:'/listings', status:'healthy'},
+  ];
+
+  state.content = [
+    {id:'p1', brand:'j1',     platform:'Instagram', campaign:'c1', type:'Reel',     title:'J1 Visa Process in 60 Seconds', date:d(-2),  time:'10:00', status:'published', owner:'Maria L.',  cta:'Apply Now', landingId:'l1', paid:false, script:'sc1', media:'v1'},
+    {id:'p2', brand:'j1',     platform:'TikTok',    campaign:'c1', type:'Short',    title:'Day in Life: J1 Participant',   date:d(-1),  time:'14:30', status:'published', owner:'Maria L.',  cta:'Apply Now', landingId:'l1', paid:true,  script:'sc2', media:'v2'},
+    {id:'p3', brand:'uno',    platform:'Facebook',  campaign:'c2', type:'Carousel', title:'New Hospitality Uniform Line',  date:d(0),   time:'09:00', status:'scheduled', owner:'James K.',  cta:'Shop Now',  landingId:'l2', paid:true,  script:'sc3', media:''},
+    {id:'p4', brand:'baron',  platform:'LinkedIn',  campaign:'c3', type:'Static Post', title:'Baron Booth at IAAPA 2026',  date:d(1),   time:'11:00', status:'approved',  owner:'Liz P.',    cta:'Visit Booth', landingId:'l3', paid:false, script:'sc4', media:''},
+    {id:'p5', brand:'marine', platform:'YouTube',   campaign:'c4', type:'Long-form Video', title:'Cruise Industry 2026 Outlook',date:d(2),time:'16:00', status:'review',   owner:'Carlos M.', cta:'Learn More', landingId:'l4', paid:false, script:'sc5', media:'v3'},
+    {id:'p6', brand:'prop',   platform:'Instagram', campaign:'c5', type:'Story',    title:'Available Units in Weirsdale',  date:d(3),   time:'08:00', status:'draft',     owner:'Anna T.',   cta:'Inquire',   landingId:'l5', paid:false, script:'',     media:''},
+    {id:'p7', brand:'cti',    platform:'LinkedIn',  campaign:'c6', type:'Static Post', title:'CTI Group: 30 Years Strong', date:d(4),   time:'10:00', status:'idea',     owner:'Robert U.', cta:'Learn More', landingId:'',   paid:false, script:'',     media:''},
+    {id:'p8', brand:'j1',     platform:'Instagram', campaign:'c1', type:'Reel',     title:'Housing Tour: Waverly Dorm',    date:d(5),   time:'15:00', status:'scheduled', owner:'Maria L.',  cta:'Apply Now', landingId:'l1', paid:false, script:'sc6', media:'v4'},
+    {id:'p9', brand:'uno',    platform:'TikTok',    campaign:'c2', type:'Short',    title:'Uniform Customization Demo',    date:d(6),   time:'12:00', status:'approved',  owner:'James K.',  cta:'Shop Now',  landingId:'l2', paid:true,  script:'sc7', media:'v5'},
+    {id:'p10',brand:'marine', platform:'Instagram', campaign:'c4', type:'Carousel', title:'5 Cruise Lines Hiring Now',     date:d(-5),  time:'11:00', status:'published', owner:'Carlos M.', cta:'Apply',     landingId:'l4', paid:true,  script:'sc8', media:''},
+  ];
+
+  state.scripts = [
+    {id:'sc1', title:'J1 Visa Process in 60 Seconds', brand:'j1', version:3, hook:'Did you know you can work in the US legally for 4 months?', body:'[OPEN: drone shot of beach]\nThe J1 Visa is your gateway...\n[CTA: Apply Now]', cta:'Apply Now', hashtags:'#J1Visa #WorkUSA #ExchangeProgram', updated:d(-3)},
+    {id:'sc2', title:'Day in Life: J1 Participant',   brand:'j1', version:2, hook:'7AM in Orlando — wake up with me as a J1 participant!', body:'[CUT: alarm clock]\n[CUT: getting ready]\n...', cta:'Apply Now', hashtags:'#J1Life #OrlandoFL', updated:d(-2)},
+    {id:'sc3', title:'New Hospitality Uniform Line',   brand:'uno', version:1, hook:'Crisp. Durable. Built for service.', body:'Introducing the 2026 hospitality line...', cta:'Shop Now', hashtags:'#Uniforms #Hospitality', updated:d(-1)},
+    {id:'sc5', title:'Cruise Industry 2026 Outlook',  brand:'marine', version:4, hook:'2026 is the biggest year cruise has ever seen.', body:'Long-form analysis...', cta:'Learn More', hashtags:'#CruiseIndustry', updated:d(-5)},
+  ];
+
+  state.videos = [
+    {id:'v1', title:'J1 Visa Process Reel',      brand:'j1',     host:'Internal',       url:'#', duration:'0:58', uploaded:d(-3), thumb:'🎬', linkedScript:'sc1'},
+    {id:'v2', title:'Day in Life J1 TikTok',     brand:'j1',     host:'TikTok',         url:'#', duration:'0:42', uploaded:d(-2), thumb:'📱', linkedScript:'sc2'},
+    {id:'v3', title:'Cruise Outlook 2026',       brand:'marine', host:'YouTube',        url:'#', duration:'8:14', uploaded:d(-5), thumb:'⚓', linkedScript:'sc5'},
+    {id:'v4', title:'Waverly Dorm Tour',         brand:'j1',     host:'Adobe Express',  url:'#', duration:'1:20', uploaded:d(-4), thumb:'🏠', linkedScript:''},
+    {id:'v5', title:'Uniform Customization Demo',brand:'uno',    host:'Adobe Express',  url:'#', duration:'0:35', uploaded:d(-1), thumb:'👕', linkedScript:'sc7'},
+    {id:'v6', title:'Baron Trade Show Recap',    brand:'baron',  host:'Vimeo',          url:'#', duration:'2:10', uploaded:d(-10),thumb:'🎖️', linkedScript:''},
+    {id:'v7', title:'CTI Properties Walkthrough',brand:'prop',   host:'Adobe Express',  url:'#', duration:'3:45', uploaded:d(-8), thumb:'🏠', linkedScript:''},
+    {id:'v8', title:'CTI Group Brand Film',      brand:'cti',    host:'YouTube',        url:'#', duration:'2:30', uploaded:d(-15),thumb:'🎬', linkedScript:''},
+  ];
+
+  state.landingPages = [
+    {id:'l1', brand:'j1',     url:'https://j1.cti-usa.com/apply',         name:'J1 Apply',         campaign:'c1', cta:'Apply Now',   utm:'?utm_source=ig&utm_medium=reel&utm_campaign=j1_summer26', conversions:142, visits:8400, status:'active'},
+    {id:'l2', brand:'uno',    url:'https://uniformsnumberone.com/shop',   name:'UNO Shop',         campaign:'c2', cta:'Shop Now',    utm:'?utm_source=fb&utm_medium=carousel&utm_campaign=uno_q3',   conversions:38,  visits:2100, status:'active'},
+    {id:'l3', brand:'baron',  url:'https://baronpromotions.com/iaapa',    name:'Baron IAAPA',      campaign:'c3', cta:'Visit Booth', utm:'?utm_source=li&utm_medium=static&utm_campaign=baron_iaapa',conversions:12,  visits:680,  status:'active'},
+    {id:'l4', brand:'marine', url:'https://ctimarinetravel.com/jobs',     name:'CTI Marine Jobs',  campaign:'c4', cta:'Apply',       utm:'?utm_source=yt&utm_medium=video&utm_campaign=cruise_outlook',conversions:67, visits:3200, status:'active'},
+    {id:'l5', brand:'prop',   url:'https://ctiproperties.com/weirsdale',  name:'Weirsdale Units',  campaign:'c5', cta:'Inquire',     utm:'?utm_source=ig&utm_medium=story&utm_campaign=prop_tenant', conversions:8,   visits:340,  status:'active'},
+  ];
+
+  state.prospects = [
+    {id:'pr1', company:'Carnival Cruise Lines', industry:'Cruise',         contact:'Sarah Chen',     brand:'marine', stage:'Proposal',     value:85000, lastContact:d(-7),  notes:'Interested in MLC recruitment package'},
+    {id:'pr2', company:'Marriott Hotels',       industry:'Hospitality',    contact:'Michael Reyes',  brand:'uno',    stage:'Discovery',    value:42000, lastContact:d(-3),  notes:'Uniform refresh for 2026'},
+    {id:'pr3', company:'Disney Cruise Line',    industry:'Cruise',         contact:'Jennifer Park',  brand:'marine', stage:'Negotiation',  value:120000,lastContact:d(-1),  notes:'Q3 2026 hiring partnership'},
+    {id:'pr4', company:'University of Florida', industry:'Education',      contact:'Dr. Tom Wilson', brand:'j1',     stage:'Qualified',    value:28000, lastContact:d(-14), notes:'J1 partnership pipeline'},
+    {id:'pr5', company:'IAAPA Expo',            industry:'Trade Events',   contact:'Linda Brooks',   brand:'baron',  stage:'Closed Won',   value:18000, lastContact:d(-21), notes:'Trade show booth secured'},
+  ];
+
+  state.presentations = [
+    {id:'pp1', title:'J1 Program Overview 2026',  brand:'j1',     audience:'University Partners', version:'v3.2', presenter:'Robert U.', date:d(-5),  campaign:'c1', file:'#'},
+    {id:'pp2', title:'UNO Uniform Catalog Q3',    brand:'uno',    audience:'Marriott Hotels',     version:'v1.0', presenter:'James K.',  date:d(-3),  campaign:'c2', file:'#'},
+    {id:'pp3', title:'Cruise Recruitment Deck',   brand:'marine', audience:'Carnival/Disney',     version:'v2.1', presenter:'Carlos M.', date:d(-1),  campaign:'c4', file:'#'},
+    {id:'pp4', title:'CTI Group Capabilities',    brand:'cti',    audience:'Corporate Prospects', version:'v4.0', presenter:'Robert U.', date:d(-10), campaign:'c6', file:'#'},
+  ];
+
+  state.engagement = [
+    {id:'e1', platform:'Instagram', brand:'j1',     author:'@maria_travels',  text:'How do I qualify for J1?',                  status:'new',       priority:'high', received:d(0),  assigned:''},
+    {id:'e2', platform:'TikTok',    brand:'j1',     author:'@yuki_jp',         text:'Is this still open for Japanese students?', status:'new',       priority:'medium',received:d(0),  assigned:''},
+    {id:'e3', platform:'Facebook',  brand:'uno',    author:'Marriott Procurement', text:'Need quote for 200 units.',             status:'assigned',  priority:'high', received:d(-1), assigned:'James K.'},
+    {id:'e4', platform:'LinkedIn',  brand:'baron',  author:'Trade Buyer Co',   text:'Can we meet at IAAPA?',                      status:'responded', priority:'medium',received:d(-2), assigned:'Liz P.'},
+    {id:'e5', platform:'YouTube',   brand:'marine', author:'@cruisefan88',     text:'Are MLC contracts still 8 months?',          status:'new',       priority:'low',  received:d(0),  assigned:''},
+    {id:'e6', platform:'Instagram', brand:'j1',     author:'@negative_user',   text:'This is a scam.',                            status:'escalated', priority:'high', received:d(0),  assigned:'Robert U.'},
+  ];
+
+  state.spend = [
+    {id:'sp1', brand:'j1',     campaign:'c1', platform:'Instagram', date:d(-7), amount:840, impressions:128000, clicks:2400, leads:42, conversions:8},
+    {id:'sp2', brand:'j1',     campaign:'c1', platform:'TikTok',    date:d(-7), amount:520, impressions:98000,  clicks:1800, leads:31, conversions:5},
+    {id:'sp3', brand:'uno',    campaign:'c2', platform:'Facebook',  date:d(-7), amount:380, impressions:54000,  clicks:720,  leads:18, conversions:4},
+    {id:'sp4', brand:'marine', campaign:'c4', platform:'YouTube',   date:d(-7), amount:920, impressions:42000,  clicks:980,  leads:24, conversions:6},
+    {id:'sp5', brand:'baron',  campaign:'c3', platform:'LinkedIn',  date:d(-7), amount:240, impressions:18000,  clicks:340,  leads:9,  conversions:2},
+  ];
+
+  saveState();
+}
+
+// ---------- HELPERS ----------
+function brand(id){ return BRANDS.find(b=>b.id===id) || BRANDS[0]; }
+function campaign(id){ return state.campaigns.find(c=>c.id===id); }
+function filterByBrand(items){
+  if(state.currentBrand==='all') return items;
+  return items.filter(it=> it.brand === state.currentBrand);
+}
+function fmt(n){
+  if(n === undefined || n === null) return '–';
+  if(typeof n === 'number'){
+    if(n >= 1000000) return (n/1000000).toFixed(1)+'M';
+    if(n >= 1000) return (n/1000).toFixed(1)+'K';
+    return n.toLocaleString();
+  }
+  return n;
+}
+function money(n){ return '$'+ (n||0).toLocaleString(); }
+function pct(n){ return (n||0).toFixed(1)+'%'; }
+function escapeHtml(s){
+  if(s===undefined||s===null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- ROUTING ----------
+function route(name){
+  state.currentRoute = name;
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.classList.toggle('active', n.getAttribute('data-route')===name);
+  });
+  location.hash = name;
+  renderPage();
+  renderRightRail();
+}
+window.addEventListener('hashchange', ()=>{
+  const r = (location.hash || '#overview').replace('#','');
+  if(r !== state.currentRoute) route(r);
+});
+document.querySelectorAll('[data-route]').forEach(el=>{
+  el.addEventListener('click', ()=> route(el.getAttribute('data-route')));
+});
+
+// ---------- BRAND SWITCHER (used inside pages) ----------
+function renderBrandSwitcher(){
+  return `<div class="brand-switcher">
+    ${BRANDS.map(b=>`
+      <button class="brand-chip ${state.currentBrand===b.id?'active':''}" onclick="setBrand('${b.id}')">
+        ${b.emoji} ${b.name}
+      </button>
+    `).join('')}
+  </div>`;
+}
+function setBrand(id){
+  state.currentBrand = id;
+  renderPage();
+  renderRightRail();
+}
+
+// ============================================================
+// PAGE RENDERERS
+// ============================================================
+function renderPage(){
+  const main = document.getElementById('mainPanel');
+  const fns = {
+    overview: pageOverview,
+    'web-analytics': pageWebAnalytics,
+    calendar: pageCalendar,
+    library: pageLibrary,
+    engagement: pageEngagement,
+    roi: pageROI,
+    landing: pageLanding,
+    prospects: pageProspects,
+    presentations: pagePresentations,
+    brands: pageBrands,
+    settings: pageSettings,
+  };
+  const fn = fns[state.currentRoute] || pageOverview;
+  main.innerHTML = fn();
+  // post-render hooks
+  if(state.currentRoute==='calendar') initCalendarDragDrop();
+}
+
+// ----- OVERVIEW -----
+function pageOverview(){
+  const items = filterByBrand(state.content);
+  const totalScheduled = items.filter(i=>i.status==='scheduled').length;
+  const totalPublished = items.filter(i=>i.status==='published').length;
+  const totalReview    = items.filter(i=>i.status==='review').length;
+  const spend = filterByBrand(state.spend);
+  const totalSpend = spend.reduce((s,x)=>s+x.amount, 0);
+  const totalImpr  = spend.reduce((s,x)=>s+x.impressions, 0);
+  const totalClicks= spend.reduce((s,x)=>s+x.clicks, 0);
+  const totalLeads = spend.reduce((s,x)=>s+x.leads, 0);
+  const cpc = totalClicks ? (totalSpend/totalClicks) : 0;
+  const cpl = totalLeads ? (totalSpend/totalLeads) : 0;
+
+  // brand reach mini chart
+  const brandPerf = BRANDS.filter(b=>b.id!=='all').map(b=>{
+    const sp = state.spend.filter(s=>s.brand===b.id);
+    return {brand:b, impressions: sp.reduce((s,x)=>s+x.impressions,0)};
+  });
+  const maxImpr = Math.max(...brandPerf.map(b=>b.impressions), 1);
+
+  // platform mix
+  const platformMix = {};
+  items.forEach(i=>{ platformMix[i.platform] = (platformMix[i.platform]||0)+1; });
+  const totalP = Object.values(platformMix).reduce((a,b)=>a+b,0) || 1;
+
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">⌘ Executive Overview</div>
+        <div class="page-sub">Real-time snapshot across all brands and platforms · ${new Date().toLocaleDateString()}</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn" onclick="route('web-analytics')">📊 Web Analytics</button>
+        <button class="btn primary" onclick="openContentModal()">+ New Content</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">SCHEDULED THIS WEEK</div>
+        <div class="kpi-value">${totalScheduled}</div>
+        <div class="kpi-meta up">▲ across ${new Set(items.map(i=>i.platform)).size} platforms</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">PUBLISHED THIS MONTH</div>
+        <div class="kpi-value">${totalPublished}</div>
+        <div class="kpi-meta up">▲ +28% vs prior</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">AWAITING APPROVAL</div>
+        <div class="kpi-value" style="color:var(--amber)">${totalReview}</div>
+        <div class="kpi-meta">⚑ requires action</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">SPEND THIS WEEK</div>
+        <div class="kpi-value">${money(totalSpend)}</div>
+        <div class="kpi-meta">CPC ${money(cpc.toFixed(2))} · CPL ${money(cpl.toFixed(2))}</div>
+      </div>
+    </div>
+
+    <div class="grid-2 mb-16">
+      <div class="tile">
+        <div class="section-title">Brand-by-Brand Reach</div>
+        ${brandPerf.map(b=>`
+          <div class="funnel-row">
+            <div class="funnel-label">${b.brand.emoji} ${b.brand.name}</div>
+            <div class="funnel-track"><div class="funnel-bar" style="width:${(b.impressions/maxImpr*100).toFixed(0)}%"></div></div>
+            <div class="funnel-value">${fmt(b.impressions)}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="tile">
+        <div class="section-title">Platform Mix (Current Filter)</div>
+        ${Object.entries(platformMix).sort((a,b)=>b[1]-a[1]).map(([plat, ct])=>`
+          <div class="funnel-row">
+            <div class="funnel-label">${plat}</div>
+            <div class="funnel-track"><div class="funnel-bar" style="width:${(ct/totalP*100).toFixed(0)}%"></div></div>
+            <div class="funnel-value">${ct}</div>
+          </div>
+        `).join('') || '<div class="empty"><div class="empty-icon">📊</div>No content for this filter</div>'}
+      </div>
+    </div>
+
+    <div class="grid-2 mb-16">
+      <div class="tile">
+        <div class="section-title">Top Performing Content</div>
+        <table>
+          <thead><tr><th>Title</th><th>Brand</th><th>Platform</th><th>Status</th></tr></thead>
+          <tbody>
+            ${items.filter(i=>i.status==='published').slice(0,5).map(i=>`
+              <tr>
+                <td>${escapeHtml(i.title)}</td>
+                <td><span class="badge ${badgeForBrand(i.brand)}">${brand(i.brand).emoji} ${brand(i.brand).name}</span></td>
+                <td>${i.platform}</td>
+                <td><span class="badge g">${STATUS_LABEL[i.status]}</span></td>
+              </tr>
+            `).join('') || `<tr><td colspan="4" style="text-align:center; color:var(--muted)">No published content yet</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+      <div class="tile">
+        <div class="section-title">Best Performing Platform by Brand</div>
+        <table>
+          <thead><tr><th>Brand</th><th>Top Platform</th><th>Impressions</th></tr></thead>
+          <tbody>
+            ${BRANDS.filter(b=>b.id!=='all').map(b=>{
+              const sp = state.spend.filter(s=>s.brand===b.id);
+              if(!sp.length) return '';
+              const top = sp.reduce((a,b)=>a.impressions>b.impressions?a:b);
+              return `<tr>
+                <td>${b.emoji} ${b.name}</td>
+                <td>${top.platform}</td>
+                <td>${fmt(top.impressions)}</td>
+              </tr>`;
+            }).join('') || `<tr><td colspan="3" style="text-align:center; color:var(--muted)">No data</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tile">
+      <div class="section-title">Recent Performance Trend (Last 7 Days)</div>
+      <div class="spark">
+        ${[28,42,38,55,49,67,72].map(v=>`<div class="bar" style="height:${v}%"></div>`).join('')}
+      </div>
+      <div class="text-xs muted" style="margin-top:6px">Sun Mon Tue Wed Thu Fri Sat</div>
+    </div>
+  `;
+}
+
+function badgeForBrand(id){
+  return {j1:'r', uno:'a', baron:'b', marine:'b', cti:'r', prop:'g'}[id] || 'x';
+}
+
+// ----- WEB ANALYTICS -----
+function pageWebAnalytics(){
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">📊 Web Analytics</div>
+        <div class="page-sub">Continuous monitoring across all CTI Group web properties · GA4 + Search Console ready</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn" onclick="openSiteModal()">+ Add Site</button>
+        <button class="btn primary">🔄 Refresh All</button>
+      </div>
+    </div>
+
+    <div class="tile mb-16" style="background:color-mix(in srgb, var(--blue) 8%, var(--panel)); border-color:color-mix(in srgb, var(--blue) 30%, var(--line))">
+      <div style="display:flex; gap:12px; align-items:flex-start">
+        <div style="font-size:22px">💡</div>
+        <div>
+          <div style="font-weight:700; margin-bottom:4px">Connection Status: UI Ready · Live Data Pending</div>
+          <div class="text-sm muted">
+            This screen is wired to display GA4 + Search Console + UptimeRobot data per site. To go live, connect each site's
+            GA4 Property ID in Settings, or paste a Looker Studio embed URL per site card below.
+            <strong>Demo data shown for layout preview.</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">TOTAL PAGEVIEWS (30D)</div>
+        <div class="kpi-value">${fmt(state.sites.reduce((s,x)=>s+x.pageviews30d,0))}</div>
+        <div class="kpi-meta up">▲ +14% vs prior</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">SITES MONITORED</div>
+        <div class="kpi-value">${state.sites.length}</div>
+        <div class="kpi-meta">All brands covered</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">AVG UPTIME</div>
+        <div class="kpi-value" style="color:var(--green)">${(state.sites.reduce((s,x)=>s+x.uptime,0)/state.sites.length).toFixed(2)}%</div>
+        <div class="kpi-meta">Last 30 days</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">AVG PAGE LOAD</div>
+        <div class="kpi-value">${(state.sites.reduce((s,x)=>s+x.avgLoad,0)/state.sites.length).toFixed(1)}s</div>
+        <div class="kpi-meta">Target &lt; 2.0s</div>
+      </div>
+    </div>
+
+    <div class="section-title">Site Performance — Per Property</div>
+    <div class="grid-3">
+      ${state.sites.map(s=>{
+        const b = brand(s.brand);
+        const statusColor = s.status==='healthy'?'g':(s.status==='watch'?'a':'r');
+        return `
+        <div class="tile">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px">
+            <div>
+              <div style="font-weight:700; font-size:13px">${s.domain}</div>
+              <div class="text-xs muted">${b.emoji} ${b.name}</div>
+            </div>
+            <span class="badge ${statusColor}">${s.status==='healthy'?'HEALTHY':(s.status==='watch'?'WATCH':'DOWN')}</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px">
+            <div>
+              <div class="text-xs muted">Pageviews 30D</div>
+              <div style="font-size:16px; font-weight:700">${fmt(s.pageviews30d)}</div>
+            </div>
+            <div>
+              <div class="text-xs muted">Uptime</div>
+              <div style="font-size:16px; font-weight:700; color:var(--green)">${s.uptime}%</div>
+            </div>
+            <div>
+              <div class="text-xs muted">Avg Load</div>
+              <div style="font-size:16px; font-weight:700">${s.avgLoad}s</div>
+            </div>
+            <div>
+              <div class="text-xs muted">Top Page</div>
+              <div style="font-size:12px; font-weight:600">${s.topPage}</div>
+            </div>
+          </div>
+          <div class="spark" style="height:30px">
+            ${Array.from({length:14},()=>Math.floor(Math.random()*70+20)).map(v=>`<div class="bar" style="height:${v}%"></div>`).join('')}
+          </div>
+          <div style="display:flex; gap:6px; margin-top:10px">
+            <button class="btn sm" style="flex:1" onclick="alert('GA4 Property: ${s.ga4}\\n\\nConnect this in Settings to enable live data refresh.')">GA4</button>
+            <button class="btn sm" style="flex:1">Search Console</button>
+            <button class="btn sm" style="flex:1">Uptime</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="tile" style="margin-top:16px">
+      <div class="section-title">📡 Embed a Looker Studio Dashboard</div>
+      <div class="text-sm muted mb-12">Paste a Looker Studio embed URL to display a fully live dashboard inline. Each site can have its own.</div>
+      <div style="display:flex; gap:8px">
+        <input class="filter-input" placeholder="https://lookerstudio.google.com/embed/reporting/..." style="flex:1; min-width:auto">
+        <select class="filter-select"><option>Select site...</option>${state.sites.map(s=>`<option>${s.domain}</option>`).join('')}</select>
+        <button class="btn primary">Save Embed</button>
+      </div>
+    </div>
+  `;
+}
+
+// ----- CALENDAR -----
+let calMonth = new Date();
+function pageCalendar(){
+  const year = calMonth.getFullYear();
+  const month = calMonth.getMonth();
+  const monthName = calMonth.toLocaleDateString('en-US', {month:'long', year:'numeric'});
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const daysInPrev = new Date(year, month, 0).getDate();
+
+  const items = filterByBrand(state.content);
+  const byDate = {};
+  items.forEach(i=>{
+    byDate[i.date] = byDate[i.date] || [];
+    byDate[i.date].push(i);
+  });
+
+  let cells = '';
+  // previous month tail
+  for(let i = firstDay-1; i>=0; i--){
+    cells += `<div class="cal-cell other-month"><div class="cal-date">${daysInPrev-i}</div></div>`;
+  }
+  // current month
+  const todayStr = new Date().toISOString().split('T')[0];
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === todayStr;
+    const events = byDate[dateStr] || [];
+    cells += `<div class="cal-cell ${isToday?'today':''}" data-date="${dateStr}" ondragover="event.preventDefault()" ondrop="dropContent(event,'${dateStr}')">
+      <div class="cal-date">${d}</div>
+      ${events.map(e=>`
+        <div class="cal-event ${e.status}" draggable="true" ondragstart="dragContent(event,'${e.id}')" onclick="openContentModal('${e.id}')">
+          ${escapeHtml(e.title.slice(0,28))}
+        </div>
+      `).join('')}
+    </div>`;
+  }
+  // next month fill
+  const totalCells = firstDay + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for(let d=1; d<=trailing; d++){
+    cells += `<div class="cal-cell other-month"><div class="cal-date">${d}</div></div>`;
+  }
+
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">📅 Content Calendar</div>
+        <div class="page-sub">Drag-and-drop scheduling · ${items.length} items this view</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn sm" onclick="navMonth(-1)">‹ Prev</button>
+        <button class="btn sm" onclick="navMonth(0)">Today</button>
+        <button class="btn sm" onclick="navMonth(1)">Next ›</button>
+        <button class="btn primary" onclick="openContentModal()">+ New Content</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+      <div style="font-size:18px; font-weight:700">${monthName}</div>
+      <div class="text-xs muted" style="display:flex; gap:12px">
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--grey); border-radius:2px"></span> Draft</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--amber); border-radius:2px"></span> Review</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--blue); border-radius:2px"></span> Approved</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--accent); border-radius:2px"></span> Scheduled</span>
+        <span><span style="display:inline-block; width:10px; height:10px; background:var(--green); border-radius:2px"></span> Published</span>
+      </div>
+    </div>
+
+    <div class="cal-grid">
+      <div class="cal-dow">Sun</div><div class="cal-dow">Mon</div><div class="cal-dow">Tue</div><div class="cal-dow">Wed</div><div class="cal-dow">Thu</div><div class="cal-dow">Fri</div><div class="cal-dow">Sat</div>
+      ${cells}
+    </div>
+  `;
+}
+function navMonth(dir){
+  if(dir===0) calMonth = new Date();
+  else { calMonth.setMonth(calMonth.getMonth()+dir); }
+  renderPage();
+}
+function dragContent(e, id){
+  e.dataTransfer.setData('text/plain', id);
+}
+function dropContent(e, newDate){
+  e.preventDefault();
+  const id = e.dataTransfer.getData('text/plain');
+  const item = state.content.find(c=>c.id===id);
+  if(item){
+    item.date = newDate;
+    saveState();
+    renderPage();
+  }
+}
+function initCalendarDragDrop(){
+  // already wired inline
+}
+
+// ----- SCRIPT & VIDEO LIBRARY -----
+function pageLibrary(){
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">🎬 Script & Video Library</div>
+        <div class="page-sub">Centralized media asset library · Connects to Adobe Express, YouTube, Vimeo, internal hosts</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn">📥 Import Adobe</button>
+        <button class="btn">📥 Import YouTube</button>
+        <button class="btn primary">+ Add Asset</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div class="tabs">
+      <button class="tab active" onclick="libTab(event, 'videos')">Videos</button>
+      <button class="tab" onclick="libTab(event, 'scripts')">Scripts</button>
+    </div>
+
+    <div id="libContent">${renderLibVideos()}</div>
+  `;
+}
+function libTab(e, which){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+  document.getElementById('libContent').innerHTML = which==='videos' ? renderLibVideos() : renderLibScripts();
+}
+function renderLibVideos(){
+  const items = filterByBrand(state.videos);
+  if(!items.length) return `<div class="empty"><div class="empty-icon">🎬</div>No videos yet. Click + Add Asset to upload.</div>`;
+  return `<div class="grid-4">${items.map(v=>{
+    const b = brand(v.brand);
+    return `
+    <div class="video-card">
+      <div class="video-thumb">
+        ${v.thumb}
+        <span class="video-host-badge">${v.host.toUpperCase()}</span>
+      </div>
+      <div class="video-body">
+        <div class="video-title">${escapeHtml(v.title)}</div>
+        <div class="video-meta">
+          <span>${b.emoji} ${b.name}</span>
+          <span>${v.duration}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+function renderLibScripts(){
+  const items = filterByBrand(state.scripts);
+  if(!items.length) return `<div class="empty"><div class="empty-icon">📝</div>No scripts yet.</div>`;
+  return `<table><thead><tr><th>Title</th><th>Brand</th><th>Version</th><th>Hook</th><th>Updated</th><th></th></tr></thead><tbody>
+    ${items.map(s=>{
+      const b = brand(s.brand);
+      return `<tr>
+        <td><strong>${escapeHtml(s.title)}</strong></td>
+        <td>${b.emoji} ${b.name}</td>
+        <td><span class="badge b">v${s.version}</span></td>
+        <td class="muted">${escapeHtml(s.hook.slice(0,80))}${s.hook.length>80?'...':''}</td>
+        <td>${s.updated}</td>
+        <td><button class="btn sm">View</button></td>
+      </tr>`;
+    }).join('')}
+  </tbody></table>`;
+}
+
+// ----- ENGAGEMENT INBOX -----
+function pageEngagement(){
+  const items = filterByBrand(state.engagement);
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">💬 Engagement & Response Center</div>
+        <div class="page-sub">Unified comment & message feed across all platforms</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn primary">⚙️ Response Templates</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">NEW</div><div class="kpi-value" style="color:var(--amber)">${items.filter(i=>i.status==='new').length}</div></div>
+      <div class="kpi"><div class="kpi-label">ASSIGNED</div><div class="kpi-value">${items.filter(i=>i.status==='assigned').length}</div></div>
+      <div class="kpi"><div class="kpi-label">RESPONDED</div><div class="kpi-value" style="color:var(--green)">${items.filter(i=>i.status==='responded').length}</div></div>
+      <div class="kpi"><div class="kpi-label">ESCALATED</div><div class="kpi-value" style="color:var(--accent)">${items.filter(i=>i.status==='escalated').length}</div></div>
+    </div>
+
+    <div class="filter-bar">
+      <span class="filter-label">Status</span>
+      <select class="filter-select"><option>All</option><option>New</option><option>Assigned</option><option>Responded</option><option>Escalated</option></select>
+      <span class="filter-label">Platform</span>
+      <select class="filter-select"><option>All</option>${PLATFORMS.map(p=>`<option>${p}</option>`).join('')}</select>
+      <span class="filter-label">Priority</span>
+      <select class="filter-select"><option>All</option><option>High</option><option>Medium</option><option>Low</option></select>
+    </div>
+
+    ${items.map(i=>{
+      const b = brand(i.brand);
+      const platformIcon = {Instagram:'📷', Facebook:'📘', TikTok:'🎵', YouTube:'▶️', LinkedIn:'💼', X:'✖️', Pinterest:'📌'}[i.platform] || '💬';
+      const statusBadge = {new:'a', assigned:'b', responded:'g', escalated:'r', closed:'x'}[i.status];
+      return `
+      <div class="inbox-item">
+        <div class="inbox-platform">${platformIcon}</div>
+        <div class="inbox-body">
+          <div class="inbox-meta">
+            <strong>${escapeHtml(i.author)}</strong>
+            <span>${b.emoji} ${b.name}</span>
+            <span>•</span>
+            <span>${i.platform}</span>
+            <span>•</span>
+            <span>${i.received}</span>
+            <span class="badge ${statusBadge}">${i.status.toUpperCase()}</span>
+            ${i.priority==='high' ? '<span class="badge r">HIGH</span>' : ''}
+          </div>
+          <div class="inbox-text">${escapeHtml(i.text)}</div>
+          <div class="inbox-actions">
+            <button class="btn sm">Reply</button>
+            <button class="btn sm">Assign</button>
+            <button class="btn sm">Escalate</button>
+            <button class="btn sm">Close</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('') || `<div class="empty"><div class="empty-icon">💬</div>No engagement items for this filter.</div>`}
+  `;
+}
+
+// ----- SPEND & ROI -----
+function pageROI(){
+  const sp = filterByBrand(state.spend);
+  const totalSpend = sp.reduce((s,x)=>s+x.amount, 0);
+  const totalImpr  = sp.reduce((s,x)=>s+x.impressions, 0);
+  const totalClicks= sp.reduce((s,x)=>s+x.clicks, 0);
+  const totalLeads = sp.reduce((s,x)=>s+x.leads, 0);
+  const totalConv  = sp.reduce((s,x)=>s+x.conversions, 0);
+  const cpm = totalImpr ? (totalSpend/totalImpr*1000) : 0;
+  const cpc = totalClicks ? (totalSpend/totalClicks) : 0;
+  const cpl = totalLeads ? (totalSpend/totalLeads) : 0;
+  const ctr = totalImpr ? (totalClicks/totalImpr*100) : 0;
+  const convRate = totalClicks ? (totalConv/totalClicks*100) : 0;
+
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">💰 Spend & ROI Analytics</div>
+        <div class="page-sub">Paid spend, attribution, and return on ad spend across all campaigns</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn">📤 Export CSV</button>
+        <button class="btn primary">+ Log Spend</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">TOTAL SPEND</div><div class="kpi-value">${money(totalSpend)}</div><div class="kpi-meta">This week</div></div>
+      <div class="kpi"><div class="kpi-label">IMPRESSIONS</div><div class="kpi-value">${fmt(totalImpr)}</div><div class="kpi-meta">CPM ${money(cpm.toFixed(2))}</div></div>
+      <div class="kpi"><div class="kpi-label">CLICKS</div><div class="kpi-value">${fmt(totalClicks)}</div><div class="kpi-meta">CTR ${pct(ctr)} · CPC ${money(cpc.toFixed(2))}</div></div>
+      <div class="kpi"><div class="kpi-label">LEADS</div><div class="kpi-value">${fmt(totalLeads)}</div><div class="kpi-meta">CPL ${money(cpl.toFixed(2))} · Conv ${pct(convRate)}</div></div>
+    </div>
+
+    <div class="tile mb-16">
+      <div class="section-title">Conversion Funnel</div>
+      ${[
+        {label:'Impressions', value:totalImpr, max:totalImpr},
+        {label:'Clicks',      value:totalClicks, max:totalImpr},
+        {label:'Leads',       value:totalLeads, max:totalImpr},
+        {label:'Conversions', value:totalConv, max:totalImpr},
+      ].map(r=>`
+        <div class="funnel-row">
+          <div class="funnel-label">${r.label}</div>
+          <div class="funnel-track"><div class="funnel-bar" style="width:${(r.value/(r.max||1)*100).toFixed(1)}%"></div></div>
+          <div class="funnel-value">${fmt(r.value)}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="tile">
+      <div class="section-title">Campaign-Level Spend</div>
+      <table>
+        <thead><tr><th>Campaign</th><th>Brand</th><th>Platform</th><th>Spend</th><th>Impressions</th><th>Clicks</th><th>Leads</th><th>CPL</th></tr></thead>
+        <tbody>
+        ${sp.map(s=>{
+          const c = campaign(s.campaign);
+          const b = brand(s.brand);
+          return `<tr>
+            <td><strong>${c ? escapeHtml(c.name) : s.campaign}</strong></td>
+            <td>${b.emoji} ${b.name}</td>
+            <td>${s.platform}</td>
+            <td><strong>${money(s.amount)}</strong></td>
+            <td>${fmt(s.impressions)}</td>
+            <td>${fmt(s.clicks)}</td>
+            <td>${s.leads}</td>
+            <td>${money((s.amount/Math.max(s.leads,1)).toFixed(2))}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ----- LANDING PAGES -----
+function pageLanding(){
+  const items = filterByBrand(state.landingPages);
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">🔗 Landing Pages & Website Links</div>
+        <div class="page-sub">Structured index of all digital destinations with UTM tracking</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn">🔧 UTM Builder</button>
+        <button class="btn primary">+ Add Landing Page</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div class="tile">
+      <table>
+        <thead><tr><th>Name</th><th>Brand</th><th>URL</th><th>CTA</th><th>Visits</th><th>Conversions</th><th>Rate</th><th>Status</th></tr></thead>
+        <tbody>
+        ${items.map(l=>{
+          const b = brand(l.brand);
+          const rate = l.visits ? (l.conversions/l.visits*100).toFixed(1) : 0;
+          return `<tr>
+            <td><strong>${escapeHtml(l.name)}</strong></td>
+            <td>${b.emoji} ${b.name}</td>
+            <td><a href="${l.url}" target="_blank" style="color:var(--blue)">${l.url.replace('https://','')}</a></td>
+            <td>${escapeHtml(l.cta)}</td>
+            <td>${fmt(l.visits)}</td>
+            <td><strong>${l.conversions}</strong></td>
+            <td>${rate}%</td>
+            <td><span class="badge g">${l.status.toUpperCase()}</span></td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:30px">No landing pages yet</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ----- PROSPECTS -----
+function pageProspects(){
+  const items = filterByBrand(state.prospects);
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">🎯 Prospect & Client Intelligence</div>
+        <div class="page-sub">Target accounts, deal stage, and campaign-to-pipeline tracking</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn">📥 Import from Zoho CRM</button>
+        <button class="btn primary">+ Add Prospect</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">TOTAL PROSPECTS</div><div class="kpi-value">${items.length}</div></div>
+      <div class="kpi"><div class="kpi-label">PIPELINE VALUE</div><div class="kpi-value">${money(items.reduce((s,x)=>s+x.value,0))}</div></div>
+      <div class="kpi"><div class="kpi-label">CLOSED WON</div><div class="kpi-value" style="color:var(--green)">${items.filter(i=>i.stage==='Closed Won').length}</div></div>
+      <div class="kpi"><div class="kpi-label">IN NEGOTIATION</div><div class="kpi-value" style="color:var(--amber)">${items.filter(i=>i.stage==='Negotiation').length}</div></div>
+    </div>
+
+    <div class="tile">
+      <table>
+        <thead><tr><th>Company</th><th>Industry</th><th>Contact</th><th>Target Brand</th><th>Stage</th><th>Value</th><th>Last Contact</th></tr></thead>
+        <tbody>
+        ${items.map(p=>{
+          const b = brand(p.brand);
+          const stageBadge = {Discovery:'b', Qualified:'b', Proposal:'a', Negotiation:'a', 'Closed Won':'g', 'Closed Lost':'x'}[p.stage] || 'x';
+          return `<tr>
+            <td><strong>${escapeHtml(p.company)}</strong></td>
+            <td>${p.industry}</td>
+            <td>${escapeHtml(p.contact)}</td>
+            <td>${b.emoji} ${b.name}</td>
+            <td><span class="badge ${stageBadge}">${p.stage}</span></td>
+            <td><strong>${money(p.value)}</strong></td>
+            <td>${p.lastContact}</td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ----- PRESENTATIONS -----
+function pagePresentations(){
+  const items = filterByBrand(state.presentations);
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">📑 Presentation Vault</div>
+        <div class="page-sub">Decks, proposals, and pitch files tied to prospects and campaigns</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn">📥 Sync from OneDrive</button>
+        <button class="btn primary">+ Upload Deck</button>
+      </div>
+    </div>
+
+    ${renderBrandSwitcher()}
+
+    <div class="grid-3">
+      ${items.map(p=>{
+        const b = brand(p.brand);
+        return `
+        <div class="tile">
+          <div style="display:flex; gap:10px; align-items:flex-start; margin-bottom:10px">
+            <div style="font-size:32px">📑</div>
+            <div style="flex:1; min-width:0">
+              <div style="font-weight:700; font-size:13px; margin-bottom:3px">${escapeHtml(p.title)}</div>
+              <div class="text-xs muted">${b.emoji} ${b.name} · ${p.version}</div>
+            </div>
+          </div>
+          <div class="text-sm" style="margin-bottom:6px"><span class="muted">Audience:</span> ${escapeHtml(p.audience)}</div>
+          <div class="text-sm" style="margin-bottom:6px"><span class="muted">Presenter:</span> ${escapeHtml(p.presenter)}</div>
+          <div class="text-sm" style="margin-bottom:10px"><span class="muted">Last Used:</span> ${p.date}</div>
+          <div style="display:flex; gap:6px">
+            <button class="btn sm" style="flex:1">View</button>
+            <button class="btn sm" style="flex:1">Download</button>
+          </div>
+        </div>`;
+      }).join('') || `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">📑</div>No presentations yet</div>`}
+    </div>
+  `;
+}
+
+// ----- BRAND WORKSPACES -----
+function pageBrands(){
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">🏢 Brand Workspaces</div>
+        <div class="page-sub">Dedicated views, filters, and KPIs for each operating brand</div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      ${BRANDS.filter(b=>b.id!=='all').map(b=>{
+        const content   = state.content.filter(i=>i.brand===b.id);
+        const landing   = state.landingPages.filter(i=>i.brand===b.id);
+        const prospects = state.prospects.filter(i=>i.brand===b.id);
+        const spend     = state.spend.filter(i=>i.brand===b.id).reduce((s,x)=>s+x.amount,0);
+        return `
+        <div class="tile" style="cursor:pointer" onclick="setBrand('${b.id}'); route('overview')">
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px">
+            <div style="font-size:30px; width:48px; height:48px; background:color-mix(in srgb, var(--accent) 12%, var(--panel-2)); border-radius:10px; display:flex; align-items:center; justify-content:center">${b.emoji}</div>
+            <div>
+              <div style="font-weight:800; font-size:15px">${b.name}</div>
+              <div class="text-xs muted">Brand ID: ${b.id}</div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+            <div><div class="text-xs muted">Content</div><div style="font-size:18px; font-weight:700">${content.length}</div></div>
+            <div><div class="text-xs muted">Landing</div><div style="font-size:18px; font-weight:700">${landing.length}</div></div>
+            <div><div class="text-xs muted">Prospects</div><div style="font-size:18px; font-weight:700">${prospects.length}</div></div>
+            <div><div class="text-xs muted">Spend</div><div style="font-size:18px; font-weight:700">${money(spend)}</div></div>
+          </div>
+          <button class="btn primary" style="width:100%; margin-top:12px; justify-content:center">Open Workspace →</button>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ----- SETTINGS -----
+function pageSettings(){
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">⚙️ Settings</div>
+        <div class="page-sub">System configuration, integrations, and user roles</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="tile">
+        <div class="section-title">User Roles (RBAC)</div>
+        <table>
+          <thead><tr><th>Role</th><th>Description</th></tr></thead>
+          <tbody>
+            ${ROLES.map(r=>`<tr><td><strong>${r}</strong></td><td class="muted">Full role permissions — Phase 2</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="tile">
+        <div class="section-title">Integrations</div>
+        <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>Meta Business</strong> · Pending API approval</div></div>
+        <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>YouTube Data API</strong> · Connect from Poseidon</div></div>
+        <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>TikTok Business</strong> · Pending</div></div>
+        <div class="rail-item"><div class="inbox-meta"><span class="dot b"></span><strong>Adobe Express</strong> · Manual upload</div></div>
+        <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>GA4 + Search Console</strong> · Awaiting Property IDs</div></div>
+        <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>Zoho CRM</strong> · Available via Poseidon</div></div>
+        <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>OneDrive</strong> · Available via Poseidon</div></div>
+      </div>
+    </div>
+
+    <div class="tile" style="margin-top:12px">
+      <div class="section-title">Data Management</div>
+      <div style="display:flex; gap:8px">
+        <button class="btn primary" onclick="exportData()">📤 Export All Data (JSON)</button>
+        <button class="btn" onclick="document.getElementById('importInput').click()">📥 Import JSON</button>
+        <button class="btn" onclick="if(confirm('Reset to demo data? Current data will be lost.')){localStorage.removeItem('swc-state'); location.reload();}">🔄 Reset to Demo</button>
+        <button class="btn" onclick="if(confirm('Wipe ALL data?')){localStorage.removeItem('swc-state'); state={...state, content:[],videos:[],scripts:[],landingPages:[],prospects:[],presentations:[],engagement:[],spend:[],sites:[],campaigns:[]}; saveState(); location.reload();}" style="color:var(--accent)">🗑️ Wipe Data</button>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// RIGHT RAIL
+// ============================================================
+function renderRightRail(){
+  const approvals = filterByBrand(state.content).filter(i=>i.status==='review').slice(0,3);
+  const alerts = filterByBrand(state.engagement).filter(i=>i.status==='new' || i.status==='escalated').slice(0,3);
+
+  document.getElementById('railApprovals').innerHTML = approvals.length ? approvals.map(a=>{
+    const b = brand(a.brand);
+    return `
+      <div class="approval-row">
+        <div class="approval-thumb">${b.emoji}</div>
+        <div style="flex:1; min-width:0">
+          <div class="text-sm" style="font-weight:600">${escapeHtml(a.title.slice(0,28))}${a.title.length>28?'...':''}</div>
+          <div class="text-xs muted">${a.platform} · ${a.owner}</div>
+        </div>
+        <button class="btn sm primary">OK</button>
+      </div>`;
+  }).join('') : '<div class="text-xs muted">No items awaiting approval</div>';
+
+  document.getElementById('railAlerts').innerHTML = alerts.length ? alerts.map(a=>{
+    const b = brand(a.brand);
+    return `
+      <div class="rail-item">
+        <div class="rail-item-title">${a.priority==='high'?'⚠️ ':''}${escapeHtml(a.author)}</div>
+        <div class="rail-item-meta">${a.platform} · ${b.name} · <span class="badge ${a.status==='new'?'a':'r'}">${a.status.toUpperCase()}</span></div>
+      </div>`;
+  }).join('') : '<div class="text-xs muted">No active alerts</div>';
+
+  // top mover (highest leads in spend)
+  const sp = filterByBrand(state.spend);
+  if(sp.length){
+    const top = sp.reduce((a,b)=>a.leads>b.leads?a:b);
+    const c = campaign(top.campaign);
+    document.getElementById('railTopMover').innerHTML = `
+      <div class="rail-item">
+        <div class="rail-item-title">${c?escapeHtml(c.name):top.campaign}</div>
+        <div class="rail-item-meta">${top.platform} · ${top.leads} leads at ${money((top.amount/top.leads).toFixed(2))} CPL</div>
+      </div>`;
+  } else {
+    document.getElementById('railTopMover').innerHTML = '<div class="text-xs muted">No spend data</div>';
+  }
+}
+
+// ============================================================
+// CONTENT MODAL (CRUD)
+// ============================================================
+function openContentModal(id){
+  const item = id ? state.content.find(c=>c.id===id) : null;
+  document.getElementById('modalTitle').textContent = item ? 'Edit Content' : 'New Content';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-row"><label>Title</label><input id="m_title" value="${item?escapeHtml(item.title):''}" placeholder="e.g. J1 Visa Process in 60 Seconds"></div>
+    <div class="form-grid-2">
+      <div class="form-row"><label>Brand</label><select id="m_brand">${BRANDS.filter(b=>b.id!=='all').map(b=>`<option value="${b.id}" ${item&&item.brand===b.id?'selected':''}>${b.emoji} ${b.name}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Campaign</label><select id="m_campaign"><option value="">— None —</option>${state.campaigns.map(c=>`<option value="${c.id}" ${item&&item.campaign===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Platform</label><select id="m_platform">${PLATFORMS.map(p=>`<option ${item&&item.platform===p?'selected':''}>${p}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Content Type</label><select id="m_type">${CONTENT_TYPES.map(t=>`<option ${item&&item.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Scheduled Date</label><input type="date" id="m_date" value="${item?item.date:''}"></div>
+      <div class="form-row"><label>Time</label><input type="time" id="m_time" value="${item?item.time:'10:00'}"></div>
+      <div class="form-row"><label>Status</label><select id="m_status">${STATUSES.map(s=>`<option value="${s}" ${item&&item.status===s?'selected':''}>${STATUS_LABEL[s]}</option>`).join('')}</select></div>
+      <div class="form-row"><label>Owner</label><input id="m_owner" value="${item?escapeHtml(item.owner):'Robert U.'}"></div>
+      <div class="form-row"><label>CTA</label><input id="m_cta" value="${item?escapeHtml(item.cta):''}" placeholder="e.g. Apply Now"></div>
+      <div class="form-row"><label>Landing Page</label><select id="m_landing"><option value="">— None —</option>${state.landingPages.map(l=>`<option value="${l.id}" ${item&&item.landingId===l.id?'selected':''}>${escapeHtml(l.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-row"><label>Paid?</label><select id="m_paid"><option value="false" ${item&&!item.paid?'selected':''}>Organic</option><option value="true" ${item&&item.paid?'selected':''}>Paid</option></select></div>
+  `;
+  document.getElementById('modalFooter').innerHTML = `
+    ${item?`<button class="btn" style="color:var(--accent)" onclick="deleteContent('${id}')">Delete</button>`:''}
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn primary" onclick="saveContent('${id||''}')">${item?'Update':'Create'}</button>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function saveContent(id){
+  const data = {
+    title: document.getElementById('m_title').value,
+    brand: document.getElementById('m_brand').value,
+    campaign: document.getElementById('m_campaign').value,
+    platform: document.getElementById('m_platform').value,
+    type: document.getElementById('m_type').value,
+    date: document.getElementById('m_date').value,
+    time: document.getElementById('m_time').value,
+    status: document.getElementById('m_status').value,
+    owner: document.getElementById('m_owner').value,
+    cta: document.getElementById('m_cta').value,
+    landingId: document.getElementById('m_landing').value,
+    paid: document.getElementById('m_paid').value==='true',
+  };
+  if(!data.title){ alert('Title required.'); return; }
+  if(id){
+    Object.assign(state.content.find(c=>c.id===id), data);
+  } else {
+    data.id = 'p'+Date.now();
+    state.content.push(data);
+  }
+  saveState();
+  closeModal();
+  renderPage();
+  renderRightRail();
+}
+function deleteContent(id){
+  if(!confirm('Delete this content item?')) return;
+  state.content = state.content.filter(c=>c.id!==id);
+  saveState();
+  closeModal();
+  renderPage();
+  renderRightRail();
+}
+function openSiteModal(){
+  document.getElementById('modalTitle').textContent = 'Add Web Property';
+  document.getElementById('modalBody').innerHTML = `
+    <div class="form-row"><label>Domain</label><input id="s_domain" placeholder="example.com"></div>
+    <div class="form-row"><label>Brand</label><select id="s_brand">${BRANDS.filter(b=>b.id!=='all').map(b=>`<option value="${b.id}">${b.emoji} ${b.name}</option>`).join('')}</select></div>
+    <div class="form-row"><label>GA4 Property ID</label><input id="s_ga4" placeholder="G-XXXXXXXXXX or properties/123456789"></div>
+    <div class="form-row"><label>Search Console URL</label><input id="s_sc" placeholder="https://search.google.com/search-console?resource_id=..."></div>
+    <div class="form-row"><label>Looker Studio Embed URL (optional)</label><input id="s_looker" placeholder="https://lookerstudio.google.com/embed/..."></div>
+  `;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="btn" onclick="closeModal()">Cancel</button>
+    <button class="btn primary" onclick="saveSite()">Add Site</button>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function saveSite(){
+  const domain = document.getElementById('s_domain').value.trim();
+  if(!domain){ alert('Domain required.'); return; }
+  state.sites.push({
+    id:'s'+Date.now(),
+    brand: document.getElementById('s_brand').value,
+    domain,
+    ga4: document.getElementById('s_ga4').value,
+    sc: document.getElementById('s_sc').value,
+    looker: document.getElementById('s_looker').value,
+    uptime:99.0, pageviews30d:0, avgLoad:0, topPage:'/', status:'healthy',
+  });
+  saveState();
+  closeModal();
+  renderPage();
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+// ============================================================
+// IMPORT / EXPORT
+// ============================================================
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'social-web-command-'+new Date().toISOString().split('T')[0]+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!confirm('Replace current data with imported file?')) return;
+      state = Object.assign(state, data);
+      saveState();
+      location.reload();
+    }catch(err){ alert('Invalid JSON file.'); }
+  };
+  reader.readAsText(file);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadState();
+const initialRoute = (location.hash || '#overview').replace('#','');
+route(initialRoute);
+saveState();
+</script>
+</body>
+</html>
