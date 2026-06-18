@@ -469,6 +469,8 @@ tr:last-child td{border-bottom:none}
       <div class="nav-group-header">Content Ops</div>
       <div class="nav-item" data-route="calendar"><span class="nav-icon">📅</span><span class="nav-label">Calendar</span><span class="nav-badge live">LIVE</span></div>
       <div class="nav-item" data-route="library"><span class="nav-icon">🎬</span><span class="nav-label">Script & Video</span><span class="nav-badge live">LIVE</span></div>
+      <div class="nav-item" data-route="production"><span class="nav-icon">🎥</span><span class="nav-label">Video Production</span><span class="nav-badge new">NEW</span></div>
+      <div class="nav-item" data-route="social"><span class="nav-icon">🌐</span><span class="nav-label">Social Profiles</span><span class="nav-badge new">NEW</span></div>
       <div class="nav-item" data-route="engagement"><span class="nav-icon">💬</span><span class="nav-label">Engagement</span><span class="nav-badge live">LIVE</span></div>
     </div>
     <div class="nav-group">
@@ -819,6 +821,8 @@ function renderPage(){
     'web-analytics': pageWebAnalytics,
     calendar: pageCalendar,
     library: pageLibrary,
+    production: pageVideoProduction,
+    social: pageSocialProfiles,
     engagement: pageEngagement,
     roi: pageROI,
     landing: pageLanding,
@@ -831,6 +835,205 @@ function renderPage(){
   main.innerHTML = fn();
   // post-render hooks
   if(state.currentRoute==='calendar') initCalendarDragDrop();
+}
+
+// ===== VIDEO PRODUCTION & SOCIAL PROFILES seed state =====
+(function initProductionState(){
+  if(!Array.isArray(state.production)){
+    state.production = [
+      {id:'prod1', title:'J1 Visa Process Explainer',         stage:'scripting', owner:'Maria L.',    brand:'j1',    notes:'60-sec explainer for Instagram + TikTok', updated: new Date().toISOString().slice(0,10)},
+      {id:'prod2', title:'Cruise Ship Day-in-Life Reel',      stage:'filming',   owner:'Carlos P.',   brand:'cti',   notes:'Carnival ship, Galley + Bar staff',       updated: new Date().toISOString().slice(0,10)},
+      {id:'prod3', title:'Cunard Norway Voyage Recap',        stage:'editing',   owner:'Editor TBD',  brand:'cti',   notes:'B-roll uploaded to Frame.io',             updated: new Date().toISOString().slice(0,10)},
+      {id:'prod4', title:'Words of Wisdom Series Ep.2',       stage:'approval',  owner:'Robert U.',   brand:'cti',   notes:'Awaiting review',                          updated: new Date().toISOString().slice(0,10)},
+    ];
+  }
+  if(!Array.isArray(state.socials)){
+    state.socials = [
+      {id:'s1', platform:'YouTube',  handle:'@CTIGroupWorldwideServicesInc', url:'https://www.youtube.com/c/CTIGroupWorldwideServicesInc', brand:'cti'},
+      {id:'s2', platform:'TikTok',   handle:'@ctigroup',                     url:'https://www.tiktok.com/@ctigroup',                       brand:'cti'},
+      {id:'s3', platform:'Instagram',handle:'@ctigroupworldwideservices',    url:'https://www.instagram.com/ctigroupworldwideservices/',   brand:'cti'},
+      {id:'s4', platform:'X',        handle:'@CtiWorldwide',                 url:'https://x.com/ctiworldwide',                             brand:'cti'},
+      {id:'s5', platform:'LinkedIn', handle:'CTI Group Worldwide Services',  url:'https://www.linkedin.com/company/cti-group-worldwide-services-inc.', brand:'cti'},
+    ];
+  }
+})();
+
+// ----- VIDEO PRODUCTION -----
+const PROD_STAGES = [
+  {id:'ideas',     label:'Ideas',     icon:'💡'},
+  {id:'scripting', label:'Scripting', icon:'✍️'},
+  {id:'filming',   label:'Filming',   icon:'🎥'},
+  {id:'editing',   label:'Editing',   icon:'✂️'},
+  {id:'approval',  label:'Approval',  icon:'✅'},
+  {id:'published', label:'Published', icon:'🚀'},
+];
+const PROD_TOOLS = [
+  {name:'HeyGen',         desc:'AI avatar video generator',           url:'https://app.heygen.com',                emoji:'🤖', status:'live'},
+  {name:'Adobe Express',  desc:'Templates, quick edits, social posts',url:'https://express.adobe.com',             emoji:'🎨', status:'live'},
+  {name:'CapCut',         desc:'Mobile + desktop editor',             url:'https://www.capcut.com',                emoji:'✂️', status:'live'},
+  {name:'Frame.io',       desc:'Review & collaboration',              url:'https://next.frame.io',                 emoji:'🎞️', status:'live'},
+  {name:'Canva',          desc:'Thumbnails, graphics, decks',         url:'https://www.canva.com',                 emoji:'🖼️', status:'live'},
+  {name:'YouTube Studio', desc:'Upload, schedule, analytics',         url:'https://studio.youtube.com',            emoji:'▶️', status:'live'},
+  {name:'Synthesia',      desc:'AI video studio',                     url:'https://www.synthesia.io',              emoji:'🎬', status:'soon'},
+  {name:'ElevenLabs',     desc:'AI voiceover',                        url:'https://elevenlabs.io',                 emoji:'🔊', status:'soon'},
+];
+function pageVideoProduction(){
+  const items = filterByBrand(state.production || []);
+  const byStage = {};
+  PROD_STAGES.forEach(s => byStage[s.id] = []);
+  items.forEach(i => { (byStage[i.stage] = byStage[i.stage] || []).push(i); });
+
+  const columns = PROD_STAGES.map(s => {
+    const list = byStage[s.id] || [];
+    const cards = list.map(p => {
+      const b = brand(p.brand);
+      return `<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:10px;margin-bottom:8px;cursor:pointer" onclick="editProduction('${p.id}')">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px">${escapeHtml(p.title)}</div>
+        <div style="font-size:11px;opacity:0.7">${b.emoji} ${b.name} · ${escapeHtml(p.owner||'Unassigned')}</div>
+        ${p.notes ? `<div style="font-size:11px;opacity:0.6;margin-top:4px">${escapeHtml(p.notes.slice(0,60))}${p.notes.length>60?'…':''}</div>` : ''}
+      </div>`;
+    }).join('') || `<div style="opacity:0.4;font-size:12px;padding:8px;text-align:center">Empty</div>`;
+    return `<div style="flex:1;min-width:180px;background:rgba(255,255,255,0.03);border-radius:8px;padding:10px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+        <span>${s.icon} ${s.label}</span>
+        <span style="opacity:0.5;font-weight:400">${list.length}</span>
+      </div>
+      ${cards}
+    </div>`;
+  }).join('');
+
+  const tools = PROD_TOOLS.map(t => {
+    const soon = t.status === 'soon';
+    return `<div class="card" style="padding:14px;cursor:${soon?'default':'pointer'};opacity:${soon?'0.55':'1'}" ${soon?'':`onclick="window.open('${t.url}','_blank','noopener')"`}>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:24px">${t.emoji}</span>
+        <strong>${escapeHtml(t.name)}</strong>
+        ${soon ? '<span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:auto">COMING SOON</span>' : '<span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:auto">LIVE</span>'}
+      </div>
+      <div style="font-size:12px;opacity:0.7">${escapeHtml(t.desc)}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">🎥 Video Production</div>
+        <div class="page-sub">Pipeline tracker + quick-launch toolkit · From idea to published</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn primary" onclick="addProduction()">+ New Production</button>
+      </div>
+    </div>
+    ${renderBrandSwitcher()}
+    <h3 style="margin:18px 0 10px;font-size:14px;opacity:0.9">Pipeline</h3>
+    <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px">${columns}</div>
+    <h3 style="margin:24px 0 10px;font-size:14px;opacity:0.9">Production Toolkit</h3>
+    <div class="grid-4">${tools}</div>
+  `;
+}
+function addProduction(){
+  const title = prompt('Production title:'); if(!title) return;
+  state.production = state.production || [];
+  state.production.push({
+    id:'prod_' + Math.random().toString(36).slice(2,9),
+    title, stage:'ideas', owner:'', brand:'cti', notes:'',
+    updated: new Date().toISOString().slice(0,10),
+  });
+  saveState(); renderPage();
+}
+function editProduction(id){
+  const p = (state.production||[]).find(x=>x.id===id); if(!p) return;
+  const stages = PROD_STAGES.map(s=>s.id).join(' | ');
+  const newStage = prompt('Move to which stage? (' + stages + ')', p.stage);
+  if(!newStage) return;
+  if(!PROD_STAGES.find(s=>s.id===newStage)){ alert('Invalid stage'); return; }
+  p.stage = newStage;
+  p.updated = new Date().toISOString().slice(0,10);
+  saveState(); renderPage();
+}
+
+// ----- SOCIAL PROFILES -----
+const SOCIAL_PLATFORMS = [
+  {name:'YouTube',   emoji:'▶️', urlPrefix:'https://www.youtube.com/'},
+  {name:'TikTok',    emoji:'🎵', urlPrefix:'https://www.tiktok.com/@'},
+  {name:'Instagram', emoji:'📷', urlPrefix:'https://www.instagram.com/'},
+  {name:'Facebook',  emoji:'📘', urlPrefix:'https://www.facebook.com/'},
+  {name:'X',         emoji:'✖️', urlPrefix:'https://x.com/'},
+  {name:'LinkedIn',  emoji:'💼', urlPrefix:'https://www.linkedin.com/company/'},
+  {name:'Pinterest', emoji:'📌', urlPrefix:'https://www.pinterest.com/'},
+  {name:'Threads',   emoji:'🧵', urlPrefix:'https://www.threads.net/@'},
+  {name:'Snapchat',  emoji:'👻', urlPrefix:'https://www.snapchat.com/add/'},
+  {name:'Twitch',    emoji:'🎮', urlPrefix:'https://www.twitch.tv/'},
+  {name:'Reddit',    emoji:'🔻', urlPrefix:'https://www.reddit.com/r/'},
+  {name:'Telegram',  emoji:'✈️', urlPrefix:'https://t.me/'},
+  {name:'WhatsApp',  emoji:'💚', urlPrefix:'https://wa.me/'},
+  {name:'Discord',   emoji:'🎧', urlPrefix:'https://discord.gg/'},
+  {name:'Vimeo',     emoji:'🎞️', urlPrefix:'https://vimeo.com/'},
+];
+function _socialEmoji(name){ const p = SOCIAL_PLATFORMS.find(x=>x.name===name); return p ? p.emoji : '🌐'; }
+function pageSocialProfiles(){
+  const items = filterByBrand(state.socials || []);
+  const platformOptions = SOCIAL_PLATFORMS.map(p => `<option value="${p.name}">${p.emoji} ${p.name}</option>`).join('');
+
+  const cards = items.map(s => {
+    const b = brand(s.brand);
+    return `<div class="card" style="padding:14px;cursor:pointer" onclick="window.open('${encodeURI(s.url)}','_blank','noopener')">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:26px">${_socialEmoji(s.platform)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700">${escapeHtml(s.platform)}</div>
+          <div style="font-size:12px;opacity:0.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(s.handle)}</div>
+        </div>
+        <button class="btn sm" onclick="event.stopPropagation();removeSocial('${s.id}')" title="Remove">×</button>
+      </div>
+      <div style="font-size:11px;opacity:0.6">${b.emoji} ${b.name}</div>
+    </div>`;
+  }).join('') || `<div class="empty"><div class="empty-icon">🌐</div>No social profiles yet. Add one above.</div>`;
+
+  return `
+    <div class="page-header">
+      <div>
+        <div class="page-title">🌐 Social Profiles</div>
+        <div class="page-sub">All your brand handles in one place · Click any tile to open</div>
+      </div>
+    </div>
+    ${renderBrandSwitcher()}
+    <div class="card" style="padding:14px;margin-bottom:16px">
+      <div style="font-weight:600;margin-bottom:10px;font-size:13px">+ Add Social Profile</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <select id="newSocialPlatform" style="padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit">
+          ${platformOptions}
+        </select>
+        <input id="newSocialHandle" type="text" placeholder="@handle or username" style="padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;min-width:180px">
+        <input id="newSocialUrl" type="text" placeholder="Full URL (optional, auto-built if empty)" style="padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;flex:1;min-width:220px">
+        <button class="btn primary" onclick="addSocial()">Add</button>
+      </div>
+    </div>
+    <div class="grid-4">${cards}</div>
+  `;
+}
+function addSocial(){
+  const platform = document.getElementById('newSocialPlatform').value;
+  const handle = (document.getElementById('newSocialHandle').value || '').trim();
+  let url = (document.getElementById('newSocialUrl').value || '').trim();
+  if(!handle && !url){ alert('Enter a handle or a URL.'); return; }
+  if(!url){
+    const def = SOCIAL_PLATFORMS.find(p=>p.name===platform);
+    const clean = handle.replace(/^@/, '');
+    url = def ? def.urlPrefix + clean : 'https://' + clean;
+  }
+  state.socials = state.socials || [];
+  state.socials.push({
+    id:'soc_' + Math.random().toString(36).slice(2,9),
+    platform, handle: handle || url, url,
+    brand: (state.brandFilter && state.brandFilter !== 'all') ? state.brandFilter : 'cti',
+  });
+  saveState(); renderPage();
+}
+function removeSocial(id){
+  if(!confirm('Remove this social profile?')) return;
+  state.socials = (state.socials||[]).filter(s=>s.id!==id);
+  saveState(); renderPage();
 }
 
 // ----- OVERVIEW -----
@@ -1186,7 +1389,6 @@ function pageLibrary(){
         <div class="page-sub">Centralized media asset library · Connects to Adobe Express, YouTube, Vimeo, internal hosts</div>
       </div>
       <div class="page-actions">
-        <button class="btn">📥 Import Adobe</button>
         <button class="btn" onclick="openYouTubeImport()">📥 Import YouTube</button>
         <button class="btn primary">+ Add Asset</button>
       </div>
@@ -1681,12 +1883,12 @@ function pageSettings(){
         <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>YouTube Data API</strong> · Connect from Poseidon</div></div>
         <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>TikTok Business</strong> · Pending</div></div>
         <div class="rail-item"><div class="inbox-meta"><span class="dot b"></span><strong>Adobe Express</strong> · Manual upload</div></div>
-        ${renderIntegrationRow('frameio',   'Frame.io',    'Adobe video review & archive')}
-        ${renderIntegrationRow('synthesia', 'Synthesia',   'AI avatar video — training & social')}
+        ${renderIntegrationRow('frameio',   'Frame.io',    'Parked — needs Adobe Developer Console OAuth', true)}
+        ${renderIntegrationRow('synthesia', 'Synthesia',   'AI avatar video — training & social', true)}
         ${renderIntegrationRow('heygen',    'HeyGen',      'AI avatar video — multilingual')}
-        ${renderIntegrationRow('higgsfield','Higgsfield',  'AI generative b-roll & cinematic')}
-        ${renderIntegrationRow('elevenlabs','ElevenLabs',  'AI voice generation & dubbing')}
-        ${renderIntegrationRow('suno',      'Suno',        'AI music & soundtrack generation')}
+        ${renderIntegrationRow('higgsfield','Higgsfield',  'AI generative b-roll & cinematic', true)}
+        ${renderIntegrationRow('elevenlabs','ElevenLabs',  'AI voice generation & dubbing', true)}
+        ${renderIntegrationRow('suno',      'Suno',        'AI music & soundtrack generation', true)}
         <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>GA4 + Search Console</strong> · Awaiting Property IDs</div></div>
         <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>Zoho CRM</strong> · Available via Poseidon</div></div>
         <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>OneDrive</strong> · Available via Poseidon</div></div>
@@ -1858,11 +2060,19 @@ const INTEGRATIONS = {
   suno:       { label:'Suno',        tokenUrl:'https://suno.com/account',                    launchUrl:'https://suno.com/',         tokenHint:'API key (paste later)',       syncable:false, manualNote:'Suno has no official public API. Save account info here for reference; export tracks manually into _Music in OneDrive.', desc:'Suno generates AI music and soundtracks.' },
 };
 const SYNC_FNS = {};  // populated below
-function renderIntegrationRow(key, label, desc){
+function renderIntegrationRow(key, label, desc, comingSoon){
   const def = INTEGRATIONS[key] || {};
   const cfg = (state.integrations && state.integrations[key]) || {};
   const hasToken = !!cfg.token;
   const hasAccount = !!cfg.account;
+  if(comingSoon){
+    return `<div class="rail-item" id="intg_${key}" style="opacity:0.6">
+      <div class="inbox-meta" style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+        <span style="flex:1; min-width:0"><span class="dot a"></span><strong>${label}</strong> · <span style="color:var(--muted)">${escapeHtml(desc)}</span></span>
+        <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:10px;padding:2px 6px;border-radius:4px">COMING SOON</span>
+      </div>
+    </div>`;
+  }
   const dot = hasToken ? 'g' : (hasAccount ? 'b' : 'a');
   let status;
   if(hasToken)        status = 'Connected · ' + escapeHtml(cfg.tokenMask || '');
