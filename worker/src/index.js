@@ -1,22 +1,28 @@
 /**
- * Social & Web Command — Sync Proxy Worker
+ * Social & Web Command — Sync Proxy Worker (v1.2.0)
  *
  * Cloudflare Worker that proxies API calls to providers whose browser-side
- * requests are blocked by CORS (Frame.io, HeyGen). All credentials are passed
- * through from the client per-request and never stored.
+ * requests are blocked by CORS (Frame.io v3, HeyGen). All credentials are
+ * passed through from the client per-request and never stored.
  *
  * Endpoints:
- *   GET  /            -> health check
- *   POST /sync/frameio  body: { token, accountId, workspaceId }
- *   POST /sync/heygen   body: { token, limit? }
+ *   GET  /                  -> health check
+ *   POST /sync/frameio      body: { token } (accountId/workspaceId ignored in v3)
+ *   POST /sync/heygen       body: { token, limit? }
+ *   POST /discover/frameio  body: { token }
  *
  * Auth model:
  *   Optional shared HMAC secret via env.HUB_SHARED_SECRET. If set, the hub
- *   must send header `X-Hub-Secret` matching it. This prevents random
- *   internet traffic from using your Worker as a free proxy.
+ *   must send header `X-Hub-Secret` matching it.
  *
  * CORS:
- *   Allows the GitHub Pages origin by default. Override via env.ALLOWED_ORIGIN.
+ *   Allows origins via env.ALLOWED_ORIGIN (comma-separated supported).
+ *   Defaults to https://robert-upchurch.github.io.
+ *
+ * Frame.io note:
+ *   v3 tokens (prefix `fio-u-`) hit the legacy API at api.frame.io/v2.
+ *   v3 schema is account -> team -> project. We expose teams as "workspaces"
+ *   to the hub so the UI stays the same.
  */
 
 const DEFAULT_ALLOWED_ORIGIN = "https://robert-upchurch.github.io";
@@ -43,10 +49,7 @@ function corsHeaders(request, env) {
 function jsonResponse(body, status, request, env) {
   return new Response(JSON.stringify(body), {
     status: status || 200,
-    headers: {
-      "Content-Type": "application/json",
-      ...corsHeaders(request, env),
-    },
+    headers: { "Content-Type": "application/json", ...corsHeaders(request, env) },
   });
 }
 
@@ -55,101 +58,98 @@ function errorResponse(message, status, request, env, extra) {
 }
 
 function checkSecret(request, env) {
-  if (!env || !env.HUB_SHARED_SECRET) return true; // no secret configured -> open (for local dev)
+  if (!env || !env.HUB_SHARED_SECRET) return true;
   const got = request.headers.get("X-Hub-Secret");
   return got && got === env.HUB_SHARED_SECRET;
 }
 
 async function readJson(request) {
-  try {
-    return await request.json();
-  } catch (e) {
-    return null;
-  }
+  try { return await request.json(); } catch (e) { return null; }
 }
 
-// ===== Frame.io v4 =====
+// ============= Frame.io v3 =============
+// v3 base: https://api.frame.io/v2
+// Account -> teams -> projects. Auth: Bearer <token>.
+
 async function syncFrameio(payload) {
   const token = payload.token;
-  const accountId = payload.accountId;
-  const workspaceId = payload.workspaceId;
   if (!token) throw new Error("Missing token");
-  if (!accountId) throw new Error("Missing accountId");
-  if (!workspaceId) throw new Error("Missing workspaceId");
+  const headers = { "Authorization": "Bearer " + token, "Accept": "application/json" };
 
-  const url = `https://api.frame.io/v4/accounts/${encodeURIComponent(accountId)}/workspaces/${encodeURIComponent(workspaceId)}/projects`;
-  const res = await fetch(url, {
-    headers: {
-      "Authorization": "Bearer " + token,
-      "Accept": "application/json",
-    },
-  });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`Frame.io ${res.status}: ${text.slice(0, 300)}`);
+  const teamsRes = await fetch("https://api.frame.io/v2/teams", { headers });
+  const teamsText = await teamsRes.text();
+  if (!teamsRes.ok) throw new Error(`Frame.io ${teamsRes.status}: ${teamsText.slice(0, 300)}`);
+  let teams;
+  try { teams = JSON.parse(teamsText); } catch (e) { throw new Error("Frame.io returned non-JSON"); }
+  if (!Array.isArray(teams)) teams = teams.data || teams.teams || [];
+
+  // Optional filter: if hub passes workspaceId (which is a team id in our v3 mapping), use only that team.
+  const filterTeamId = payload.workspaceId || null;
+  const usedTeams = filterTeamId ? teams.filter(t => t.id === filterTeamId) : teams;
+
+  const all = [];
+  for (const t of usedTeams) {
+    if (!t.id) continue;
+    try {
+      const pRes = await fetch(`https://api.frame.io/v2/teams/${encodeURIComponent(t.id)}/projects`, { headers });
+      if (!pRes.ok) continue;
+      const pData = await pRes.json();
+      const list = Array.isArray(pData) ? pData : (pData.data || pData.projects || []);
+      list.forEach(p => all.push({ project: p, team: t }));
+    } catch (e) { /* per-team failure is non-fatal */ }
   }
-  let data;
-  try { data = JSON.parse(text); } catch (e) { throw new Error("Frame.io returned non-JSON"); }
-  const list = data.data || data.projects || [];
-  return list.map(p => ({
+
+  return all.map(({ project: p, team }) => ({
     externalId: p.id,
-    title: p.name || "Frame.io Project",
-    url: "https://next.frame.io/project/" + p.id,
+    title: (team.name ? team.name + " / " : "") + (p.name || "Frame.io Project"),
+    url: "https://app.frame.io/projects/" + p.id,
     duration: "",
-    uploaded: (p.inserted_at || p.created_at || "").slice(0, 10),
+    uploaded: (p.inserted_at || p.updated_at || p.created_at || "").slice(0, 10),
     thumb: "\uD83C\uDFA5",
   }));
 }
 
-// ===== Frame.io discovery (list accounts + workspaces) =====
 async function discoverFrameio(payload) {
   const token = payload.token;
   if (!token) throw new Error("Missing token");
   const headers = { "Authorization": "Bearer " + token, "Accept": "application/json" };
 
-  // 1) accounts
-  const accRes = await fetch("https://api.frame.io/v4/accounts", { headers });
-  const accText = await accRes.text();
-  if (!accRes.ok) throw new Error(`Frame.io accounts ${accRes.status}: ${accText.slice(0,300)}`);
-  let accData; try { accData = JSON.parse(accText); } catch (e) { throw new Error("accounts: non-JSON"); }
-  const accounts = accData.data || accData.accounts || [];
+  let me = {};
+  try {
+    const meRes = await fetch("https://api.frame.io/v2/me", { headers });
+    if (meRes.ok) me = await meRes.json();
+  } catch (e) { /* ignore */ }
 
-  // 2) workspaces per account
-  const out = [];
-  for (const a of accounts) {
-    const aid = a.id;
-    let workspaces = [];
-    try {
-      const wRes = await fetch(`https://api.frame.io/v4/accounts/${encodeURIComponent(aid)}/workspaces`, { headers });
-      const wText = await wRes.text();
-      if (wRes.ok) {
-        const wData = JSON.parse(wText);
-        workspaces = (wData.data || wData.workspaces || []).map(w => ({ id: w.id, name: w.name || "" }));
-      }
-    } catch (e) { /* ignore per-account failure */ }
-    out.push({ accountId: aid, accountName: a.name || a.display_name || "", workspaces });
+  const teamsRes = await fetch("https://api.frame.io/v2/teams", { headers });
+  const teamsText = await teamsRes.text();
+  if (!teamsRes.ok) throw new Error(`Frame.io teams ${teamsRes.status}: ${teamsText.slice(0, 300)}`);
+  let teams; try { teams = JSON.parse(teamsText); } catch (e) { throw new Error("teams: non-JSON"); }
+  if (!Array.isArray(teams)) teams = teams.data || teams.teams || [];
+
+  // Group teams by account_id; expose teams as "workspaces" to keep hub UI stable.
+  const byAcct = new Map();
+  for (const t of teams) {
+    const aid = t.account_id || (t.account && t.account.id) || "_default";
+    const aname = (t.account && (t.account.display_name || t.account.name)) ||
+                  (me && me.account && (me.account.display_name || me.account.name)) || "";
+    if (!byAcct.has(aid)) byAcct.set(aid, { accountId: aid, accountName: aname, workspaces: [] });
+    byAcct.get(aid).workspaces.push({ id: t.id, name: t.name || "" });
   }
-  return out;
+  return Array.from(byAcct.values());
 }
 
-// ===== HeyGen =====
+// ============= HeyGen =============
 async function syncHeygen(payload) {
   const token = payload.token;
   if (!token) throw new Error("Missing token");
   const limit = Math.min(parseInt(payload.limit, 10) || 50, 100);
   const url = `https://api.heygen.com/v1/video.list?limit=${limit}`;
   const res = await fetch(url, {
-    headers: {
-      "X-Api-Key": token,
-      "Accept": "application/json",
-    },
+    headers: { "X-Api-Key": token, "Accept": "application/json" },
   });
   const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`HeyGen ${res.status}: ${text.slice(0, 300)}`);
-  }
-  let data;
-  try { data = JSON.parse(text); } catch (e) { throw new Error("HeyGen returned non-JSON"); }
+  if (!res.ok) throw new Error(`HeyGen ${res.status}: ${text.slice(0, 300)}`);
+  let data; try { data = JSON.parse(text); } catch (e) { throw new Error("HeyGen returned non-JSON"); }
   const list = (data.data && data.data.videos) || data.videos || [];
   return list.map(v => ({
     externalId: v.video_id || v.id,
@@ -167,6 +167,7 @@ function fmtDuration(sec) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
+// ============= Router =============
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -179,23 +180,18 @@ export default {
       return jsonResponse({
         ok: true,
         service: "social-web-command-sync",
-        version: "1.1.0",
+        version: "1.2.0",
         endpoints: ["/sync/frameio", "/sync/heygen", "/discover/frameio"],
+        notes: "Frame.io uses v3 API (token prefix fio-u-...). Teams are exposed to the hub as 'workspaces'.",
         time: new Date().toISOString(),
       }, 200, request, env);
     }
 
-    if (request.method !== "POST") {
-      return errorResponse("Method not allowed", 405, request, env);
-    }
-    if (!checkSecret(request, env)) {
-      return errorResponse("Unauthorized (bad or missing X-Hub-Secret header)", 401, request, env);
-    }
+    if (request.method !== "POST") return errorResponse("Method not allowed", 405, request, env);
+    if (!checkSecret(request, env)) return errorResponse("Unauthorized (bad or missing X-Hub-Secret header)", 401, request, env);
 
     const payload = await readJson(request);
-    if (!payload || typeof payload !== "object") {
-      return errorResponse("Invalid JSON body", 400, request, env);
-    }
+    if (!payload || typeof payload !== "object") return errorResponse("Invalid JSON body", 400, request, env);
 
     try {
       if (url.pathname === "/sync/frameio") {

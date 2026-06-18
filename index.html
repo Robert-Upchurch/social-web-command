@@ -1757,9 +1757,9 @@ function deleteContent(id){
 const INTEGRATIONS = {
   frameio:    { label:'Frame.io',    tokenUrl:'https://developer.frame.io/app/tokens',       launchUrl:'https://app.frame.io/',     tokenHint:'fio-u-...',                   syncable:true,  browserCors:false, desc:'Frame.io (Adobe) hosts past YouTube masters, promo edits, and archived footage.',
     extraFields:[
-      {key:'accountId',   label:'Account ID',           placeholder:'UUID of your Frame.io account',  hint:'Find in Frame.io v4 → Settings → Developer.'},
-      {key:'workspaceId', label:'Workspace ID',         placeholder:'UUID of your workspace',          hint:'Open a workspace; the URL contains /workspaces/<id>.'},
-      {key:'projectId',   label:'Project ID (optional)',placeholder:'UUID of root project to sync',    hint:'Leave blank to sync workspace root.'},
+      {key:'accountId',   label:'Account ID (optional)',   placeholder:'Auto-filled by Discover IDs',     hint:'Optional for v3 tokens (fio-u-...). Click 🔍 Discover IDs to fetch.'},
+      {key:'workspaceId', label:'Team / Workspace ID (optional)', placeholder:'Auto-filled by Discover IDs', hint:'Optional. If set, syncs only that team. Leave blank to sync all teams.'},
+      {key:'projectId',   label:'Project ID (optional)',placeholder:'UUID of root project to sync',    hint:'Leave blank to sync all projects in selected team(s).'},
     ]},
   synthesia:  { label:'Synthesia',   tokenUrl:'https://app.synthesia.io/account/api',        launchUrl:'https://app.synthesia.io/', tokenHint:'API key (paste later)',       syncable:true,  browserCors:true,  desc:'Synthesia generates AI avatar videos for training and social.' },
   heygen:     { label:'HeyGen',      tokenUrl:'https://app.heygen.com/settings/api',         launchUrl:'https://app.heygen.com/',   tokenHint:'API key (paste later)',       syncable:true,  browserCors:false, desc:'HeyGen generates multilingual AI avatar videos.' },
@@ -2212,15 +2212,15 @@ async function syncHeyGen(cfg){
   return { added: mergeSyncedVideos(items, 'HeyGen'), total: items.length };
 }
 async function syncFrameio(cfg){
-  const accountId   = cfg.extras && cfg.extras.accountId;
-  const workspaceId = cfg.extras && cfg.extras.workspaceId;
-  if(!accountId || !workspaceId) throw new Error('Frame.io requires Account ID and Workspace ID. Open Connect Frame.io and fill those fields.');
-  // Server-side path (preferred — avoids CORS)
+  const accountId   = (cfg.extras && cfg.extras.accountId) || '';
+  const workspaceId = (cfg.extras && cfg.extras.workspaceId) || '';
+  // Server-side path (preferred — avoids CORS). v3 token works without IDs; Worker lists all teams.
   if(_proxyUrl()){
     const data = await _proxyPost('/sync/frameio', { token: cfg.token, accountId: accountId, workspaceId: workspaceId });
     const items = (data.items || []).map(function(p){ return Object.assign({}, p, { brand: cfg.defaultBrand || '' }); });
     return { added: mergeSyncedVideos(items, 'Frame.io'), total: items.length };
   }
+  if(!accountId || !workspaceId) throw new Error('Frame.io browser sync requires Account ID and Workspace ID, or configure the Sync Proxy in Settings.');
   const url = 'https://api.frame.io/v4/accounts/' + encodeURIComponent(accountId) + '/workspaces/' + encodeURIComponent(workspaceId) + '/projects';
   const res = await fetch(url, {
     headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/json' }
