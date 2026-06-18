@@ -2060,10 +2060,21 @@ async function syncIntegration(key){
 }
 function mergeSyncedVideos(items, hostLabel){
   state.videos = state.videos || [];
-  const existingIds = new Set(state.videos.map(function(v){return v.externalId;}).filter(Boolean));
-  let added = 0;
+  const byId = new Map();
+  state.videos.forEach(function(v){ if(v.externalId) byId.set(v.externalId, v); });
+  let added = 0, updated = 0;
   items.forEach(function(it){
-    if(it.externalId && existingIds.has(it.externalId)) return;
+    const existing = it.externalId ? byId.get(it.externalId) : null;
+    if(existing){
+      // Refresh fields from latest sync (thumb, url, title, duration, uploaded)
+      if(it.thumb)    existing.thumb = it.thumb;
+      if(it.url)      existing.url = it.url;
+      if(it.title)    existing.title = it.title;
+      if(it.duration) existing.duration = it.duration;
+      if(it.uploaded) existing.uploaded = it.uploaded;
+      updated++;
+      return;
+    }
     state.videos.push({
       id: 'v_' + hostLabel.toLowerCase() + '_' + (it.externalId || Math.random().toString(36).slice(2,9)),
       externalId: it.externalId || null,
@@ -2078,7 +2089,7 @@ function mergeSyncedVideos(items, hostLabel){
     });
     added++;
   });
-  return added;
+  return added + updated;
 }
 function _fmtDuration(sec){
   sec = Math.round(Number(sec)||0);
