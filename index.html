@@ -585,6 +585,7 @@ let state = {
   content: [],
   scripts: [],
   videos: [],
+  stills: [],
   landingPages: [],
   prospects: [],
   presentations: [],
@@ -600,6 +601,7 @@ function saveState(){
   document.getElementById('lastSaved').textContent = 'just now';
   document.getElementById('dataCounter').textContent =
     state.content.length + state.videos.length + state.scripts.length +
+    (state.stills?.length||0) +
     state.landingPages.length + state.prospects.length + state.presentations.length;
 }
 function loadState(){
@@ -671,6 +673,21 @@ function seedDemoData(){
     {id:'v14', title:'Hospitality B-roll Generative',     brand:'uno',    host:'Higgsfield', url:'https://higgsfield.ai/',     duration:'0:20', uploaded:d(-12),  thumb:'🎥', linkedScript:''},
     {id:'v15', title:'J1 VO — Spanish narration',          brand:'j1',     host:'ElevenLabs', url:'https://elevenlabs.io/app/', duration:'1:10', uploaded:d(-4),   thumb:'🎙️', linkedScript:''},
     {id:'v16', title:'Baron IAAPA Theme — Suno track',     brand:'baron',  host:'Suno',       url:'https://suno.com/',          duration:'2:18', uploaded:d(-6),   thumb:'🎵', linkedScript:''},
+  ];
+
+  state.stills = [
+    {id:'st1',  title:'J1 Group Photo — Summer 2025',       brand:'j1',     source:'Internal',      dimensions:'4032x3024', uploaded:d(-30), thumb:'🎓', tags:['group','hero','seasonal']},
+    {id:'st2',  title:'Waverly Dorm — Hero Shot',           brand:'j1',     source:'Internal',      dimensions:'3840x2160', uploaded:d(-14), thumb:'🏠', tags:['housing','hero']},
+    {id:'st3',  title:'Cruise Ship Deck — Sunset',          brand:'marine', source:'Adobe Express', dimensions:'1920x1080', uploaded:d(-21), thumb:'⚓', tags:['stock','hero','landscape']},
+    {id:'st4',  title:'UNO Uniform — Chef Coat Detail',     brand:'uno',    source:'Internal',      dimensions:'2400x2400', uploaded:d(-10), thumb:'👕', tags:['product','catalog']},
+    {id:'st5',  title:'UNO Uniform — Crew Lineup',          brand:'uno',    source:'Internal',      dimensions:'3000x2000', uploaded:d(-9),  thumb:'👔', tags:['product','lifestyle']},
+    {id:'st6',  title:'Baron IAAPA Booth Render',           brand:'baron',  source:'Canva',         dimensions:'2560x1440', uploaded:d(-15), thumb:'🎖️', tags:['render','tradeshow']},
+    {id:'st7',  title:'CTI Group HQ — Exterior',            brand:'cti',    source:'Internal',      dimensions:'4032x3024', uploaded:d(-60), thumb:'🏢', tags:['brand','hero']},
+    {id:'st8',  title:'Weirsdale Lot — Aerial Drone',       brand:'prop',   source:'Internal',      dimensions:'5472x3648', uploaded:d(-45), thumb:'🛩️', tags:['aerial','property']},
+    {id:'st9',  title:'CTI Properties — Unit Interior',     brand:'prop',   source:'Internal',      dimensions:'3840x2160', uploaded:d(-22), thumb:'🛋️', tags:['interior','listing']},
+    {id:'st10', title:'Cruise Crew Recruitment Banner',     brand:'marine', source:'Frame.io',      dimensions:'2400x1260', uploaded:d(-35), thumb:'🚢', tags:['campaign','banner']},
+    {id:'st11', title:'J1 Application Flow — Infographic',  brand:'j1',     source:'Canva',         dimensions:'1080x1920', uploaded:d(-7),  thumb:'📋', tags:['infographic','story']},
+    {id:'st12', title:'Higgsfield Generative — Hospitality',brand:'uno',    source:'Higgsfield',    dimensions:'1024x1024', uploaded:d(-5),  thumb:'🎨', tags:['ai','generative']},
   ];
 
   state.landingPages = [
@@ -1161,6 +1178,7 @@ function pageLibrary(){
     <div class="tabs">
       <button class="tab active" onclick="libTab(event, 'videos')">Videos</button>
       <button class="tab" onclick="libTab(event, 'scripts')">Scripts</button>
+      <button class="tab" onclick="libTab(event, 'stills')">Stills</button>
     </div>
 
     <div id="libContent">${renderLibVideos()}</div>
@@ -1169,7 +1187,11 @@ function pageLibrary(){
 function libTab(e, which){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   e.target.classList.add('active');
-  document.getElementById('libContent').innerHTML = which==='videos' ? renderLibVideos() : renderLibScripts();
+  let html;
+  if(which==='videos') html = renderLibVideos();
+  else if(which==='scripts') html = renderLibScripts();
+  else html = renderLibStills();
+  document.getElementById('libContent').innerHTML = html;
 }
 function renderLibVideos(){
   const items = filterByBrand(state.videos);
@@ -1208,6 +1230,29 @@ function renderLibScripts(){
       </tr>`;
     }).join('')}
   </tbody></table>`;
+}
+function renderLibStills(){
+  const items = filterByBrand(state.stills || []);
+  if(!items.length) return `<div class="empty"><div class="empty-icon">🖼️</div>No stills yet. Drop hero shots, product photos, and behind-the-scenes images here.</div>`;
+  return `<div class="grid-4">${items.map(s=>{
+    const b = brand(s.brand);
+    return `
+    <div class="video-card">
+      <div class="video-thumb" style="font-size:48px">${s.thumb || '🖼️'}
+        <span class="video-host-badge">${(s.source||'INTERNAL').toUpperCase()}</span>
+      </div>
+      <div class="video-body">
+        <div class="video-title">${escapeHtml(s.title)}</div>
+        <div class="video-meta">
+          <span>${b.emoji} ${b.name}</span>
+          <span>${s.dimensions || ''}</span>
+        </div>
+        <div class="video-meta" style="margin-top:4px">
+          <span class="muted">${s.tags ? s.tags.join(' · ') : ''}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 // ----- ENGAGEMENT INBOX -----
@@ -1561,7 +1606,7 @@ function pageSettings(){
         <button class="btn primary" onclick="exportData()">📤 Export All Data (JSON)</button>
         <button class="btn" onclick="document.getElementById('importInput').click()">📥 Import JSON</button>
         <button class="btn" onclick="if(confirm('Reset to demo data? Current data will be lost.')){localStorage.removeItem('swc-state'); location.reload();}">🔄 Reset to Demo</button>
-        <button class="btn" onclick="if(confirm('Wipe ALL data?')){localStorage.removeItem('swc-state'); state={...state, content:[],videos:[],scripts:[],landingPages:[],prospects:[],presentations:[],engagement:[],spend:[],sites:[],campaigns:[]}; saveState(); location.reload();}" style="color:var(--accent)">🗑️ Wipe Data</button>
+        <button class="btn" onclick="if(confirm('Wipe ALL data?')){localStorage.removeItem('swc-state'); state={...state, content:[],videos:[],scripts:[],stills:[],landingPages:[],prospects:[],presentations:[],engagement:[],spend:[],sites:[],campaigns:[]}; saveState(); location.reload();}" style="color:var(--accent)">🗑️ Wipe Data</button>
       </div>
     </div>
   `;
