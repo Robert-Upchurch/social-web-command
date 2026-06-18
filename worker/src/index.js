@@ -1,5 +1,5 @@
 /**
- * Social & Web Command — Sync Proxy Worker (v1.2.0)
+ * Social & Web Command — Sync Proxy Worker (v1.2.1)
  *
  * Cloudflare Worker that proxies API calls to providers whose browser-side
  * requests are blocked by CORS (Frame.io v3, HeyGen). All credentials are
@@ -113,29 +113,65 @@ async function discoverFrameio(payload) {
   const token = payload.token;
   if (!token) throw new Error("Missing token");
   const headers = { "Authorization": "Bearer " + token, "Accept": "application/json" };
+  const diag = { probed: [] };
 
-  let me = {};
-  try {
-    const meRes = await fetch("https://api.frame.io/v2/me", { headers });
-    if (meRes.ok) me = await meRes.json();
-  } catch (e) { /* ignore */ }
+  async function probe(path) {
+    try {
+      const r = await fetch("https://api.frame.io" + path, { headers });
+      const t = await r.text();
+      diag.probed.push({ path, status: r.status, bytes: t.length, sample: r.ok ? undefined : t.slice(0, 200) });
+      let parsed = null;
+      if (r.ok) { try { parsed = JSON.parse(t); } catch (_) {} }
+      return { ok: r.ok, status: r.status, json: parsed };
+    } catch (e) {
+      diag.probed.push({ path, error: String(e) });
+      return { ok: false, status: 0, json: null };
+    }
+  }
 
-  const teamsRes = await fetch("https://api.frame.io/v2/teams", { headers });
-  const teamsText = await teamsRes.text();
-  if (!teamsRes.ok) throw new Error(`Frame.io teams ${teamsRes.status}: ${teamsText.slice(0, 300)}`);
-  let teams; try { teams = JSON.parse(teamsText); } catch (e) { throw new Error("teams: non-JSON"); }
-  if (!Array.isArray(teams)) teams = teams.data || teams.teams || [];
+  const meRes = await probe("/v2/me");
+  const me = meRes.json || {};
+  const acctRes = await probe("/v2/accounts");
+  let accountsList = [];
+  if (acctRes.json) accountsList = Array.isArray(acctRes.json) ? acctRes.json : (acctRes.json.data || acctRes.json.accounts || []);
 
-  // Group teams by account_id; expose teams as "workspaces" to keep hub UI stable.
+  const teamRes = await probe("/v2/teams");
+  let teams = [];
+  if (teamRes.json) teams = Array.isArray(teamRes.json) ? teamRes.json : (teamRes.json.data || teamRes.json.teams || []);
+
+  // Try account-scoped teams if top-level returned nothing
+  if (teams.length === 0 && accountsList.length > 0) {
+    for (const a of accountsList) {
+      const aid = a.id || a.account_id;
+      if (!aid) continue;
+      const r = await probe(`/v2/accounts/${encodeURIComponent(aid)}/teams`);
+      if (r.json) {
+        const arr = Array.isArray(r.json) ? r.json : (r.json.data || r.json.teams || []);
+        for (const team of arr) { if (!team.account_id) team.account_id = aid; teams.push(team); }
+      }
+    }
+  }
+
+  // Group teams by account_id; seed with /accounts so accounts show even without teams
   const byAcct = new Map();
+  for (const a of accountsList) {
+    const aid = a.id || a.account_id;
+    if (!aid) continue;
+    byAcct.set(aid, { accountId: aid, accountName: a.display_name || a.name || "", workspaces: [] });
+  }
   for (const t of teams) {
-    const aid = t.account_id || (t.account && t.account.id) || "_default";
+    const aid = t.account_id || (t.account && t.account.id) || (accountsList[0] && (accountsList[0].id || accountsList[0].account_id)) || "_default";
     const aname = (t.account && (t.account.display_name || t.account.name)) ||
                   (me && me.account && (me.account.display_name || me.account.name)) || "";
     if (!byAcct.has(aid)) byAcct.set(aid, { accountId: aid, accountName: aname, workspaces: [] });
     byAcct.get(aid).workspaces.push({ id: t.id, name: t.name || "" });
   }
-  return Array.from(byAcct.values());
+
+  return {
+    accounts: Array.from(byAcct.values()),
+    _diag: diag,
+    _me: { id: me.id || "", name: me.name || me.display_name || "", email: me.email || "" },
+  };
 }
 
 // ============= HeyGen =============
@@ -180,7 +216,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "social-web-command-sync",
-        version: "1.2.0",
+        version: "1.2.1",
         endpoints: ["/sync/frameio", "/sync/heygen", "/discover/frameio"],
         notes: "Frame.io uses v3 API (token prefix fio-u-...). Teams are exposed to the hub as 'workspaces'.",
         time: new Date().toISOString(),
@@ -203,8 +239,8 @@ export default {
         return jsonResponse({ ok: true, provider: "heygen", items, total: items.length }, 200, request, env);
       }
       if (url.pathname === "/discover/frameio") {
-        const accounts = await discoverFrameio(payload);
-        return jsonResponse({ ok: true, provider: "frameio", accounts }, 200, request, env);
+        const result = await discoverFrameio(payload);
+        return jsonResponse({ ok: true, provider: "frameio", accounts: result.accounts, _diag: result._diag, _me: result._me }, 200, request, env);
       }
       return errorResponse("Not found", 404, request, env);
     } catch (e) {

@@ -2149,7 +2149,18 @@ async function discoverFrameioIds(){
   try{
     const data = await _proxyPost('/discover/frameio', { token: token });
     const accounts = data.accounts || [];
-    if(accounts.length === 0){ out.innerHTML = '<span style="color:#ef4444">No accounts found. Your API key may be invalid or have no account access.</span>'; return; }
+    if(accounts.length === 0){
+      let dbg = '<span style="color:#ef4444">No accounts found. The token authenticated but Frame.io returned no accounts/teams.</span>';
+      if(data._me && (data._me.email || data._me.name)){
+        dbg += '<div style="margin-top:6px;color:#10b981">Token user: ' + escapeHtml(data._me.name||'') + ' &lt;' + escapeHtml(data._me.email||'') + '&gt;</div>';
+      }
+      if(data._diag && data._diag.probed){
+        dbg += '<details style="margin-top:8px"><summary style="cursor:pointer;color:#fbbf24">Show diagnostic (Frame.io endpoint probes)</summary>';
+        dbg += '<pre style="font-size:11px;background:#0008;padding:8px;border-radius:4px;overflow:auto;max-height:200px">' + escapeHtml(JSON.stringify(data._diag.probed, null, 2)) + '</pre></details>';
+      }
+      out.innerHTML = dbg;
+      return;
+    }
     let html = '<div style="color:#10b981; margin-bottom:6px">Found ' + accounts.length + ' account(s):</div>';
     accounts.forEach(function(a){
       html += '<div style="margin-bottom:8px; padding:6px; background:rgba(255,255,255,.04); border-radius:4px">';
