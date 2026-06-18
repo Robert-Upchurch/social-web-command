@@ -1201,10 +1201,15 @@ function renderLibVideos(){
   if(!items.length) return `<div class="empty"><div class="empty-icon">🎬</div>No videos yet. Click + Add Asset to upload.</div>`;
   return `<div class="grid-4">${items.map(v=>{
     const b = brand(v.brand);
+    const isUrl = typeof v.thumb === 'string' && /^https?:\/\//.test(v.thumb);
+    const thumbHtml = isUrl
+      ? `<img src="${escapeHtml(v.thumb)}" alt="${escapeHtml(v.title)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'\uD83C\uDFAC',style:'font-size:32px'}))">`
+      : (v.thumb || '\uD83C\uDFAC');
+    const clickable = v.url ? `onclick="window.open('${encodeURI(v.url)}','_blank','noopener')" title="Open in ${escapeHtml(v.host||'')}" style="cursor:pointer"` : '';
     return `
-    <div class="video-card">
+    <div class="video-card" ${clickable}>
       <div class="video-thumb">
-        ${v.thumb}
+        ${thumbHtml}
         <span class="video-host-badge">${v.host.toUpperCase()}</span>
       </div>
       <div class="video-body">

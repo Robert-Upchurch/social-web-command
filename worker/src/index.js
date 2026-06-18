@@ -1,5 +1,5 @@
 /**
- * Social & Web Command — Sync Proxy Worker (v1.2.1)
+ * Social & Web Command — Sync Proxy Worker (v1.3.0)
  *
  * Cloudflare Worker that proxies API calls to providers whose browser-side
  * requests are blocked by CORS (Frame.io v3, HeyGen). All credentials are
@@ -193,7 +193,7 @@ async function syncHeygen(payload) {
     url: v.video_url || ("https://app.heygen.com/videos/" + (v.video_id || v.id)),
     duration: v.duration ? fmtDuration(v.duration) : "",
     uploaded: v.created_at ? new Date(v.created_at * 1000).toISOString().slice(0, 10) : "",
-    thumb: "\uD83D\uDC64",
+    thumb: v.thumbnail_url || v.gif_url || "\uD83D\uDC64",
   }));
 }
 
@@ -216,7 +216,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "social-web-command-sync",
-        version: "1.2.1",
+        version: "1.3.0",
         endpoints: ["/sync/frameio", "/sync/heygen", "/discover/frameio"],
         notes: "Frame.io uses v3 API (token prefix fio-u-...). Teams are exposed to the hub as 'workspaces'.",
         time: new Date().toISOString(),
