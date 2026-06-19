@@ -1,5 +1,5 @@
 /**
- * Social & Web Command — Sync Proxy Worker (v1.3.1)
+ * Social & Web Command — Sync Proxy Worker (v1.4.0)
  *
  * Cloudflare Worker that proxies API calls to providers whose browser-side
  * requests are blocked by CORS (Frame.io v3, HeyGen). All credentials are
