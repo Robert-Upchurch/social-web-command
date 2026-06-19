@@ -1448,10 +1448,124 @@ function libTab(e, which){
   else html = renderLibStills();
   document.getElementById('libContent').innerHTML = html;
 }
-// videoUi: { q: '', host: 'all', collapsed: { HostName: true } }
+// videoUi: { q: '', host: 'all', genre: 'all', office: 'all', collapsed: { HostName: true } }
+const VIDEO_GENRES = ['J1 Visa','Cruise Crew','Hospitality','Maritime','Trade Show','Avatar/AI','Brand','Other'];
+const DEFAULT_CRUISE_LINES = ['Carnival','Apollo','Virgin Voyages','Royal Caribbean','NCL','Cunard','P&O','Carnival UK','Windstar','Margaritaville','Other'];
+function getCruiseLines(){
+  if(!Array.isArray(state.cruiseLines) || !state.cruiseLines.length){
+    state.cruiseLines = DEFAULT_CRUISE_LINES.slice();
+  }
+  return state.cruiseLines;
+}
+function addCruiseLine(name){
+  const n = (name||'').trim();
+  if(!n) return;
+  const list = getCruiseLines();
+  if(!list.includes(n)){ list.push(n); saveState(); }
+}
+function getHotels(){
+  if(!Array.isArray(state.hotels)) state.hotels = [];
+  return state.hotels;
+}
+function addHotel(name){
+  const n = (name||'').trim();
+  if(!n) return;
+  const list = getHotels();
+  if(!list.includes(n)){ list.push(n); saveState(); }
+}
+const DEFAULT_OFFICES = [
+  'USA — Orlando HQ','USA — Weirsdale FL','USA — Fort Lauderdale','USA — Miami','USA — New York','USA — Los Angeles',
+  'Thailand — Bangkok','Thailand — Phuket','Thailand — Chiang Mai',
+  'Malaysia — Kuala Lumpur','Malaysia — Penang','Malaysia — Johor Bahru',
+  'Myanmar — Yangon','Myanmar — Mandalay','Myanmar — Naypyidaw',
+  'Greece — Athens','Greece — Thessaloniki','Greece — Piraeus',
+  'Indonesia — Jakarta','Indonesia — Bali (Denpasar)','Indonesia — Surabaya','Indonesia — Bandung',
+  'European Union — Brussels','European Union — Berlin','European Union — Paris','European Union — Amsterdam','European Union — Rome','European Union — Madrid',
+  'Brazil — São Paulo','Brazil — Rio de Janeiro','Brazil — Brasília',
+  'South Africa — Johannesburg','South Africa — Cape Town','South Africa — Durban',
+  'Vietnam — Ho Chi Minh City','Vietnam — Hanoi','Vietnam — Da Nang',
+  'Other'
+];
+function getOffices(){
+  if(!Array.isArray(state.offices) || !state.offices.length){
+    state.offices = DEFAULT_OFFICES.slice();
+  }
+  return state.offices;
+}
+function addOffice(name){
+  const n = (name||'').trim();
+  if(!n) return;
+  const list = getOffices();
+  if(!list.includes(n)){ list.push(n); saveState(); }
+}
 function _videoUi(){
-  state.videoUi = state.videoUi || { q:'', host:'all', collapsed:{} };
+  state.videoUi = state.videoUi || { q:'', host:'all', genre:'all', office:'all', cruise:'all', hotel:'all', collapsed:{} };
+  if(!('genre' in state.videoUi)) state.videoUi.genre = 'all';
+  if(!('office' in state.videoUi)) state.videoUi.office = 'all';
+  if(!('cruise' in state.videoUi)) state.videoUi.cruise = 'all';
+  if(!('hotel' in state.videoUi)) state.videoUi.hotel = 'all';
   return state.videoUi;
+}
+function libVideosGenre(val){ _videoUi().genre = val||'all'; document.getElementById('libContent').innerHTML = renderLibVideos(); }
+function libVideosOffice(val){ _videoUi().office = val||'all'; document.getElementById('libContent').innerHTML = renderLibVideos(); }
+function libVideosCruise(val){ _videoUi().cruise = val||'all'; document.getElementById('libContent').innerHTML = renderLibVideos(); }
+function libVideosHotel(val){ _videoUi().hotel = val||'all'; document.getElementById('libContent').innerHTML = renderLibVideos(); }
+function libVideosTagOpen(id){
+  const v = (state.videos||[]).find(x=>x.id===id);
+  if(!v) return;
+  const offices = getOffices();
+  const cruises = getCruiseLines();
+  const hotels = getHotels();
+  const genreOpts = ['<option value="">— none —</option>'].concat(VIDEO_GENRES.map(g => `<option value="${escapeHtml(g)}" ${v.genre===g?'selected':''}>${escapeHtml(g)}</option>`)).join('');
+  const officeOpts = ['<option value="">— none —</option>'].concat(offices.map(o => `<option value="${escapeHtml(o)}" ${v.office===o?'selected':''}>${escapeHtml(o)}</option>`)).join('');
+  const cruiseOpts = ['<option value="">— none —</option>'].concat(cruises.map(c => `<option value="${escapeHtml(c)}" ${v.cruise===c?'selected':''}>${escapeHtml(c)}</option>`)).join('');
+  const hotelOpts = ['<option value="">— none —</option>'].concat(hotels.map(h => `<option value="${escapeHtml(h)}" ${v.hotel===h?'selected':''}>${escapeHtml(h)}</option>`)).join('');
+  const html = `<div style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999" onclick="if(event.target===this)document.getElementById('tagModal').remove()" id="tagModal">
+    <div style="background:var(--panel,#141416);border:1px solid var(--line,#27272a);border-radius:10px;padding:20px;min-width:340px;max-width:460px">
+      <h3 style="margin:0 0 12px 0;font-size:15px">🏷️ Tag video</h3>
+      <div style="font-size:12px;opacity:0.7;margin-bottom:14px">${escapeHtml(v.title||'')}</div>
+      <label style="display:block;font-size:11px;opacity:0.7;margin-bottom:4px">Genre</label>
+      <select id="tagGenre" style="width:100%;padding:7px;margin-bottom:12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit">${genreOpts}</select>
+      <label style="display:block;font-size:11px;opacity:0.7;margin-bottom:4px">Office</label>
+      <select id="tagOffice" style="width:100%;padding:7px;margin-bottom:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit">${officeOpts}</select>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <input id="tagNewOffice" type="text" placeholder="+ Add new office..." style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:12px">
+        <button class="btn sm" onclick="const n=document.getElementById('tagNewOffice').value.trim();if(n){addOffice(n);libVideosTagOpen('${escapeHtml(id)}');}">Add</button>
+      </div>
+      <label style="display:block;font-size:11px;opacity:0.7;margin-bottom:4px">Cruise line</label>
+      <select id="tagCruise" style="width:100%;padding:7px;margin-bottom:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit">${cruiseOpts}</select>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <input id="tagNewCruise" type="text" placeholder="+ Add new cruise line..." style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:12px">
+        <button class="btn sm" onclick="const n=document.getElementById('tagNewCruise').value.trim();if(n){addCruiseLine(n);libVideosTagOpen('${escapeHtml(id)}');}">Add</button>
+      </div>
+      <label style="display:block;font-size:11px;opacity:0.7;margin-bottom:4px">Hotel (J1)</label>
+      <select id="tagHotel" style="width:100%;padding:7px;margin-bottom:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit">${hotelOpts}</select>
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        <input id="tagNewHotel" type="text" placeholder="+ Add new hotel..." style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:12px">
+        <button class="btn sm" onclick="const n=document.getElementById('tagNewHotel').value.trim();if(n){addHotel(n);libVideosTagOpen('${escapeHtml(id)}');}">Add</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn sm" onclick="document.getElementById('tagModal').remove()">Cancel</button>
+        <button class="btn sm primary" onclick="libVideosTagSave('${escapeHtml(id)}')">Save</button>
+      </div>
+    </div></div>`;
+  const existing = document.getElementById('tagModal'); if(existing) existing.remove();
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+function libVideosTagSave(id){
+  const v = (state.videos||[]).find(x=>x.id===id);
+  if(!v) return;
+  const g = document.getElementById('tagGenre').value;
+  const o = document.getElementById('tagOffice').value;
+  const c = document.getElementById('tagCruise').value;
+  const h = document.getElementById('tagHotel').value;
+  v.genre = g || undefined;
+  v.office = o || undefined;
+  v.cruise = c || undefined;
+  v.hotel = h || undefined;
+  saveState();
+  const m = document.getElementById('tagModal'); if(m) m.remove();
+  document.getElementById('libContent').innerHTML = renderLibVideos();
 }
 function libVideosSearch(val){ _videoUi().q = (val||'').toLowerCase(); document.getElementById('libContent').innerHTML = renderLibVideos(); }
 function libVideosHost(val){ _videoUi().host = val||'all'; document.getElementById('libContent').innerHTML = renderLibVideos(); }
@@ -1474,12 +1588,21 @@ function _videoCardHtml(v){
   const thumbHtml = isUrl
     ? `<img src="${escapeHtml(v.thumb)}" alt="${escapeHtml(v.title)}" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🎬',style:'font-size:32px'}))">`
     : (v.thumb || '🎬');
-  const clickable = v.url ? `onclick="window.open('${encodeURI(v.url)}','_blank','noopener')" title="Open in ${escapeHtml(v.host||'')}" style="cursor:pointer"` : '';
+  const clickable = v.url ? `onclick="if(event.target.closest('.tag-btn'))return;window.open('${encodeURI(v.url)}','_blank','noopener')" title="Open in ${escapeHtml(v.host||'')}" style="cursor:pointer"` : '';
+  const tags = [];
+  if(v.genre) tags.push(`<span class="badge b" style="font-size:10px">${escapeHtml(v.genre)}</span>`);
+  if(v.office) tags.push(`<span class="badge x" style="font-size:10px">${escapeHtml(v.office)}</span>`);
+  if(v.cruise) tags.push(`<span class="badge" style="font-size:10px;background:rgba(56,189,248,0.15);color:#38bdf8">⚓ ${escapeHtml(v.cruise)}</span>`);
+  if(v.hotel) tags.push(`<span class="badge" style="font-size:10px;background:rgba(245,158,11,0.15);color:#f59e0b">🏨 ${escapeHtml(v.hotel)}</span>`);
+  const tagRow = tags.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${tags.join('')}</div>` : '';
+  const idAttr = escapeHtml(v.id||'');
   return `<div class="video-card" ${clickable}>
     <div class="video-thumb">${thumbHtml}<span class="video-host-badge">${(v.host||'').toUpperCase()}</span></div>
     <div class="video-body">
       <div class="video-title">${escapeHtml(v.title)}</div>
       <div class="video-meta"><span>${b.emoji} ${b.name}</span><span>${escapeHtml(v.duration||'')}</span></div>
+      ${tagRow}
+      <div style="margin-top:6px"><button class="btn sm tag-btn" onclick="event.stopPropagation();libVideosTagOpen('${idAttr}')">🏷️ Tag</button></div>
     </div>
   </div>`;
 }
@@ -1487,15 +1610,37 @@ function renderLibVideos(){
   const ui = _videoUi();
   const all = filterByBrand(state.videos || []);
 
-  // Build host list from all (pre-filter) data
-  const hostCounts = {};
-  all.forEach(v => { const h = v.host || 'Other'; hostCounts[h] = (hostCounts[h]||0) + 1; });
+  // Build host/genre/office counts from all (pre-filter) data
+  const hostCounts = {}, genreCounts = {}, officeCounts = {}, cruiseCounts = {}, hotelCounts = {};
+  all.forEach(v => {
+    const h = v.host || 'Other'; hostCounts[h] = (hostCounts[h]||0) + 1;
+    if(v.genre){ genreCounts[v.genre] = (genreCounts[v.genre]||0) + 1; }
+    if(v.office){ officeCounts[v.office] = (officeCounts[v.office]||0) + 1; }
+    if(v.cruise){ cruiseCounts[v.cruise] = (cruiseCounts[v.cruise]||0) + 1; }
+    if(v.hotel){ hotelCounts[v.hotel] = (hotelCounts[v.hotel]||0) + 1; }
+  });
   const hosts = Object.keys(hostCounts).sort();
+  // Genre list: all known genres (even with 0 count) so users can see options
+  const genreList = VIDEO_GENRES.slice();
+  // Office list: union of seeded offices + any used in videos
+  const officeSet = new Set(getOffices());
+  Object.keys(officeCounts).forEach(o => officeSet.add(o));
+  const officeList = Array.from(officeSet).sort();
+  const cruiseSet = new Set(getCruiseLines());
+  Object.keys(cruiseCounts).forEach(c => cruiseSet.add(c));
+  const cruiseList = Array.from(cruiseSet).sort();
+  const hotelSet = new Set(getHotels());
+  Object.keys(hotelCounts).forEach(h => hotelSet.add(h));
+  const hotelList = Array.from(hotelSet).sort();
 
-  // Apply filters (title search + host filter)
+  // Apply filters
   const q = (ui.q||'').trim();
   const filtered = all.filter(v => {
     if(ui.host !== 'all' && (v.host||'Other') !== ui.host) return false;
+    if(ui.genre !== 'all' && (v.genre||'') !== ui.genre) return false;
+    if(ui.office !== 'all' && (v.office||'') !== ui.office) return false;
+    if(ui.cruise !== 'all' && (v.cruise||'') !== ui.cruise) return false;
+    if(ui.hotel !== 'all' && (v.hotel||'') !== ui.hotel) return false;
     if(q && !(v.title||'').toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1503,6 +1648,18 @@ function renderLibVideos(){
   // Controls bar
   const hostOptions = ['<option value="all">All sources (' + all.length + ')</option>']
     .concat(hosts.map(h => `<option value="${escapeHtml(h)}" ${ui.host===h?'selected':''}>${escapeHtml(h)} (${hostCounts[h]})</option>`))
+    .join('');
+  const genreOptions = ['<option value="all">All genres</option>']
+    .concat(genreList.map(g => `<option value="${escapeHtml(g)}" ${ui.genre===g?'selected':''}>${escapeHtml(g)}${genreCounts[g]?' ('+genreCounts[g]+')':''}</option>`))
+    .join('');
+  const officeOptions = ['<option value="all">All offices</option>']
+    .concat(officeList.map(o => `<option value="${escapeHtml(o)}" ${ui.office===o?'selected':''}>${escapeHtml(o)}${officeCounts[o]?' ('+officeCounts[o]+')':''}</option>`))
+    .join('');
+  const cruiseOptions = ['<option value="all">All cruise lines</option>']
+    .concat(cruiseList.map(c => `<option value="${escapeHtml(c)}" ${ui.cruise===c?'selected':''}>${escapeHtml(c)}${cruiseCounts[c]?' ('+cruiseCounts[c]+')':''}</option>`))
+    .join('');
+  const hotelOptions = ['<option value="all">All hotels</option>']
+    .concat(hotelList.map(h => `<option value="${escapeHtml(h)}" ${ui.hotel===h?'selected':''}>${escapeHtml(h)}${hotelCounts[h]?' ('+hotelCounts[h]+')':''}</option>`))
     .join('');
   const controls = `
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center">
@@ -1512,6 +1669,22 @@ function renderLibVideos(){
       <select onchange="libVideosHost(this.value)"
         style="padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:13px">
         ${hostOptions}
+      </select>
+      <select onchange="libVideosGenre(this.value)"
+        style="padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:13px">
+        ${genreOptions}
+      </select>
+      <select onchange="libVideosOffice(this.value)"
+        style="padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:13px">
+        ${officeOptions}
+      </select>
+      <select onchange="libVideosCruise(this.value)"
+        style="padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:13px">
+        ${cruiseOptions}
+      </select>
+      <select onchange="libVideosHotel(this.value)"
+        style="padding:8px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:inherit;font-size:13px">
+        ${hotelOptions}
       </select>
       <button class="btn sm" onclick="libVideosCollapseAll(true)">Expand all</button>
       <button class="btn sm" onclick="libVideosCollapseAll(false)">Collapse all</button>
