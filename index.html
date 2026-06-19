@@ -2754,9 +2754,12 @@ async function openYouTubeImport(){
         <button class="btn" onclick="document.querySelectorAll('#ytImportModal .yt-pick:not(:disabled)').forEach(c=>c.checked=false)">Clear</button>
       </div>
       <div style="padding:8px 16px;overflow-y:auto;flex:1">${rows}</div>
-      <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:flex-end;gap:8px">
+      <div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;gap:8px">
         <button class="btn" onclick="document.getElementById('ytImportModal').remove()">Cancel</button>
-        <button class="btn primary" onclick="confirmYouTubeImport('${channel.channelId}')">Import selected</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn primary" onclick="document.querySelectorAll('#ytImportModal .yt-pick:not(:disabled)').forEach(c=>c.checked=true);confirmYouTubeImport('${channel.channelId}')">⚡ Import all ${newCount} new</button>
+          <button class="btn" onclick="confirmYouTubeImport('${channel.channelId}')">Import selected</button>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(modal);
