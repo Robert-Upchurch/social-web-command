@@ -220,6 +220,9 @@ input,select,textarea{font-family:inherit; color:inherit}
   background:var(--panel-2); border:1px solid var(--line); color:var(--txt);
   min-width:120px;
 }
+/* Force dark background + light text on native <select> dropdown options */
+select{ color-scheme: dark; }
+select option{ background:#1b1b1f; color:#e7e7ea; }
 .filter-label{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-right:4px}
 
 /* Tables */
