@@ -1423,7 +1423,6 @@ function pageLibrary(){
         <div class="page-sub">Centralized media asset library · Connects to Adobe Express, YouTube, Vimeo, internal hosts</div>
       </div>
       <div class="page-actions">
-        <button class="btn" onclick="openYouTubeImport()">📥 Import YouTube</button>
         <button class="btn primary">+ Add Asset</button>
       </div>
     </div>
@@ -2126,7 +2125,10 @@ function pageSettings(){
       <div class="tile">
         <div class="section-title">Integrations</div>
         <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>Meta Business</strong> · Pending API approval</div></div>
-        <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>YouTube Data API</strong> · Connect from Poseidon</div></div>
+        <div class="rail-item" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <div class="inbox-meta"><span class="dot b"></span><strong>YouTube Data API</strong> · Import videos from CTI channel</div>
+          <button class="btn sm primary" onclick="openYouTubeImport()">📥 Import</button>
+        </div>
         <div class="rail-item"><div class="inbox-meta"><span class="dot a"></span><strong>TikTok Business</strong> · Pending</div></div>
         <div class="rail-item"><div class="inbox-meta"><span class="dot b"></span><strong>Adobe Express</strong> · Manual upload</div></div>
         ${renderIntegrationRow('frameio',   'Frame.io',    'Parked — needs Adobe Developer Console OAuth', true)}
