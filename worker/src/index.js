@@ -175,31 +175,49 @@ async function discoverFrameio(payload) {
 }
 
 // ============= HeyGen =============
+// Fixes for chronic sync issues:
+//   1) Paginates via next_token so we get ALL videos, not just first 50
+//   2) Refreshes signed thumbnail URLs on every sync (they expire ~16 days)
+//   3) Filters out failed/processing videos so the library only shows finished work
 async function syncHeygen(payload) {
   const token = payload.token;
   if (!token) throw new Error("Missing token");
-  const limit = Math.min(parseInt(payload.limit, 10) || 50, 100);
-  // v2/videos returns thumbnail_url, gif_url, video_page_url, duration. v1 does not.
-  const url = `https://api.heygen.com/v2/videos?limit=${limit}`;
-  const res = await fetch(url, {
-    headers: { "X-Api-Key": token, "Accept": "application/json" },
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`HeyGen ${res.status}: ${text.slice(0, 300)}`);
-  let data; try { data = JSON.parse(text); } catch (e) { throw new Error("HeyGen returned non-JSON"); }
-  // v2 shape: { data: [ ... ] }. Older v1 shape was { data: { videos: [...] } }. Handle both.
-  let list = [];
-  if (Array.isArray(data.data)) list = data.data;
-  else if (data.data && Array.isArray(data.data.videos)) list = data.data.videos;
-  else if (Array.isArray(data.videos)) list = data.videos;
-  return list.map(v => ({
-    externalId: v.id || v.video_id,
-    title: v.title || v.video_title || "HeyGen Video",
-    url: v.video_page_url || v.video_url || ("https://app.heygen.com/videos/" + (v.id || v.video_id)),
-    duration: v.duration ? fmtDuration(v.duration) : "",
-    uploaded: v.created_at ? new Date(v.created_at * 1000).toISOString().slice(0, 10) : "",
-    thumb: v.thumbnail_url || v.gif_url || "\uD83D\uDC64",
-  }));
+  const pageSize = Math.min(parseInt(payload.limit, 10) || 100, 100);
+  const maxPages = Math.min(parseInt(payload.maxPages, 10) || 20, 50); // cap at 20 pages = 2000 videos
+  const all = [];
+  let nextToken = null;
+  let pages = 0;
+  do {
+    let url = `https://api.heygen.com/v2/videos?limit=${pageSize}`;
+    if (nextToken) url += `&token=${encodeURIComponent(nextToken)}`;
+    const res = await fetch(url, {
+      headers: { "X-Api-Key": token, "Accept": "application/json" },
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(`HeyGen ${res.status}: ${text.slice(0, 300)}`);
+    let data; try { data = JSON.parse(text); } catch (e) { throw new Error("HeyGen returned non-JSON"); }
+    let list = [];
+    if (Array.isArray(data.data)) list = data.data;
+    else if (data.data && Array.isArray(data.data.videos)) list = data.data.videos;
+    else if (Array.isArray(data.videos)) list = data.videos;
+    all.push(...list);
+    nextToken = data.next_token || (data.data && data.data.next_token) || null;
+    pages++;
+    if (!data.has_more && !nextToken) break;
+  } while (nextToken && pages < maxPages);
+
+  return all
+    .filter(v => !v.status || v.status === "completed") // hide failed/processing
+    .map(v => ({
+      externalId: v.id || v.video_id,
+      title: v.title || v.video_title || "HeyGen Video",
+      url: v.video_page_url || v.video_url || ("https://app.heygen.com/videos/" + (v.id || v.video_id)),
+      duration: v.duration ? fmtDuration(v.duration) : "",
+      uploaded: v.created_at ? new Date(v.created_at * 1000).toISOString().slice(0, 10) : "",
+      // thumbnail_url is a signed URL that expires — fresh on every sync
+      thumb: v.thumbnail_url || v.gif_url || "\uD83D\uDC64",
+      syncedAt: Date.now(),
+    }));
 }
 
 function fmtDuration(sec) {
@@ -221,7 +239,7 @@ export default {
       return jsonResponse({
         ok: true,
         service: "social-web-command-sync",
-        version: "1.3.1",
+        version: "1.4.0",
         endpoints: ["/sync/frameio", "/sync/heygen", "/discover/frameio"],
         notes: "Frame.io uses v3 API (token prefix fio-u-...). Teams are exposed to the hub as 'workspaces'.",
         time: new Date().toISOString(),
