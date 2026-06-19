@@ -1279,16 +1279,50 @@ function pageWebAnalytics(){
       }).join('')}
     </div>
 
+    ${state.sites.filter(s=>s.looker).map(s=>`
+      <div class="tile" style="margin-top:16px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+          <div class="section-title" style="margin:0">📊 ${escapeHtml(s.domain)} · Live Dashboard</div>
+          <button class="btn sm" onclick="clearLooker('${s.id}')">Remove embed</button>
+        </div>
+        <div style="position:relative; padding-top:62%; border-radius:10px; overflow:hidden; border:1px solid var(--line); background:var(--panel-2)">
+          <iframe src="${escapeHtml(s.looker)}" style="position:absolute; inset:0; width:100%; height:100%; border:0" allowfullscreen sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+        </div>
+      </div>
+    `).join('')}
+
     <div class="tile" style="margin-top:16px">
       <div class="section-title">📡 Embed a Looker Studio Dashboard</div>
-      <div class="text-sm muted mb-12">Paste a Looker Studio embed URL to display a fully live dashboard inline. Each site can have its own.</div>
-      <div style="display:flex; gap:8px">
-        <input class="filter-input" placeholder="https://lookerstudio.google.com/embed/reporting/..." style="flex:1; min-width:auto">
-        <select class="filter-select"><option>Select site...</option>${state.sites.map(s=>`<option>${s.domain}</option>`).join('')}</select>
-        <button class="btn primary">Save Embed</button>
+      <div class="text-sm muted mb-12">Paste a Looker Studio <strong>embed</strong> URL (File → Share → Embed report). Each site can have its own — the live dashboard renders above.</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <input id="lookerUrlInput" class="filter-input" placeholder="https://lookerstudio.google.com/embed/reporting/..." style="flex:1; min-width:240px">
+        <select id="lookerSiteSelect" class="filter-select">
+          <option value="">Select site...</option>
+          ${state.sites.map(s=>`<option value="${s.id}">${escapeHtml(s.domain)}</option>`).join('')}
+        </select>
+        <button class="btn primary" onclick="saveLookerEmbed()">Save Embed</button>
       </div>
     </div>
   `;
+}
+function saveLookerEmbed(){
+  const url = document.getElementById('lookerUrlInput').value.trim();
+  const sid = document.getElementById('lookerSiteSelect').value;
+  if(!sid){ alert('Pick a site first.'); return; }
+  if(!url){ alert('Paste a Looker Studio embed URL first.'); return; }
+  if(!/^https:\/\/lookerstudio\.google\.com\/embed\//.test(url)){
+    if(!confirm('That doesn\'t look like a Looker Studio embed URL. Save anyway?')) return;
+  }
+  const site = state.sites.find(s=>s.id===sid);
+  if(!site){ alert('Site not found.'); return; }
+  site.looker = url;
+  saveState();
+  renderPage();
+}
+function clearLooker(sid){
+  if(!confirm('Remove the embedded dashboard for this site?')) return;
+  const site = state.sites.find(s=>s.id===sid);
+  if(site){ site.looker = ''; saveState(); renderPage(); }
 }
 
 // ----- CALENDAR -----
@@ -1562,8 +1596,27 @@ function renderLibStills(){
 }
 
 // ----- ENGAGEMENT INBOX -----
+// Native inbox URL builders per platform — opens the platform's own comment/DM inbox in a new tab.
+const NATIVE_INBOX = {
+  'YouTube':   (h,u)=> 'https://studio.youtube.com/channel/UC/comments/inbox',
+  'TikTok':    (h,u)=> 'https://www.tiktok.com/tiktokstudio/inbox',
+  'Instagram': (h,u)=> 'https://www.instagram.com/direct/inbox/',
+  'Facebook':  (h,u)=> 'https://business.facebook.com/latest/inbox/',
+  'LinkedIn':  (h,u)=> 'https://www.linkedin.com/company/setup/new/',
+  'X':         (h,u)=> 'https://x.com/messages',
+  'Pinterest': (h,u)=> 'https://www.pinterest.com/business/hub/inbox/',
+  'Threads':   (h,u)=> 'https://www.threads.net/notifications',
+  'Reddit':    (h,u)=> 'https://www.reddit.com/message/inbox/',
+  'Snapchat':  (h,u)=> 'https://business.snapchat.com/',
+  'Twitch':    (h,u)=> 'https://dashboard.twitch.tv/',
+  'Discord':   (h,u)=> 'https://discord.com/channels/@me',
+  'WhatsApp':  (h,u)=> 'https://business.whatsapp.com/',
+  'Telegram':  (h,u)=> 'https://web.telegram.org/',
+};
+
 function pageEngagement(){
   const items = filterByBrand(state.engagement);
+  const socials = (state.socials || []).filter(s => NATIVE_INBOX[s.platform]);
   return `
     <div class="page-header">
       <div>
@@ -1576,6 +1629,26 @@ function pageEngagement(){
     </div>
 
     ${renderBrandSwitcher()}
+
+    <div class="tile" style="margin-bottom:16px">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+        <div class="section-title" style="margin:0">📨 Native Inboxes — One-Click Comments & DMs</div>
+        <button class="btn sm" onclick="route('social')">+ Add Social Profile</button>
+      </div>
+      <div class="text-sm muted mb-12">Opens each platform's own comment/DM inbox in a new tab. The right account must be signed in on that browser tab.</div>
+      ${socials.length === 0 ? '<div class="empty" style="padding:16px">No social profiles added yet. <a href="#social" onclick="route(\'social\'); return false;" style="color:var(--accent)">Add profiles in Social Profiles →</a></div>' : `
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:8px">
+          ${socials.map(s => {
+            const url = NATIVE_INBOX[s.platform](s.handle, s.url);
+            const icon = {YouTube:'▶️', TikTok:'🎵', Instagram:'📷', Facebook:'📘', LinkedIn:'💼', X:'✖️', Pinterest:'📌', Threads:'@', Reddit:'👽', Snapchat:'👻', Twitch:'🎮', Discord:'💬', WhatsApp:'📲', Telegram:'✈️'}[s.platform] || '💬';
+            return `<a href="${url}" target="_blank" rel="noopener" class="btn" style="justify-content:space-between; padding:10px 12px; text-align:left">
+              <span><span style="font-size:14px; margin-right:6px">${icon}</span>${escapeHtml(s.platform)}</span>
+              <span style="font-size:10px; color:var(--muted)">Open ↗</span>
+            </a>`;
+          }).join('')}
+        </div>
+      `}
+    </div>
 
     <div class="kpi-row">
       <div class="kpi"><div class="kpi-label">NEW</div><div class="kpi-value" style="color:var(--amber)">${items.filter(i=>i.status==='new').length}</div></div>
